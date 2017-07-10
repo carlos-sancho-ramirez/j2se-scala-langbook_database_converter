@@ -1,4 +1,5 @@
 import java.io._
+import java.sql.DriverManager
 
 object Main {
 
@@ -9,12 +10,21 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    val stream = new BufferedReader(new InputStreamReader(new FileInputStream(filePath)))
+    val path = filePath
+    println("Connecting to database at " + path)
+    val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
     try {
-      println(stream.readLine())
+      val statement = connection.createStatement()
+      statement.setQueryTimeout(10) // 10 seconds
+      val resultSet = statement.executeQuery("SELECT * FROM WordRegister")
+      var limit = 20
+      while (limit > 0 && resultSet.next()) {
+        println(resultSet.getString("mWrittenWord"))
+        limit -= 1
+      }
     }
     finally {
-      stream.close()
+      connection.close()
     }
   }
 }
