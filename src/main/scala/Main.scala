@@ -33,6 +33,10 @@ object Main {
 
   case class Language(concept: Int, code: String)
 
+  val enLanguage = conceptCount
+  val esLanguage = conceptCount + 1
+  val jaLanguage = conceptCount + 2
+
   val languages: Vector[Language] = {
     val i = conceptCount
     val r = Vector(
@@ -119,10 +123,7 @@ object Main {
     newIndex
   }
 
-  def registerWord(en: String, es: String, kanji: String, kana: String): Unit = {
-    val concept = conceptCount
-    conceptCount += 1
-
+  def registerWord(concept: Int, en: String, es: String, kanji: String, kana: String): Unit = {
     if (en != null) {
       val word = appendEnglishWord(en)
       acceptations += Acceptation(word, concept)
@@ -137,11 +138,18 @@ object Main {
     acceptations += Acceptation(jaWord, concept)
   }
 
+  def registerWord(en: String, es: String, kanji: String, kana: String): Unit = {
+    val concept = conceptCount
+    conceptCount += 1
+
+    registerWord(concept, en, es, kanji, kana)
+  }
+
   def initialiseDatabase(): Unit = {
     registerWord("Language", "Idioma", "言語", "げんご")
-    registerWord("English", "Inglés", "英語", "えいご")
-    registerWord("Spanish", "Español", "スペイン語", "スペイン")
-    registerWord("Japanese", "Japonés", "日本語", "にほんご")
+    registerWord(enLanguage, "English", "Inglés", "英語", "えいご")
+    registerWord(esLanguage, "Spanish", "Español", "スペイン語", "スペイン")
+    registerWord(jaLanguage, "Japanese", "Japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
   }
@@ -151,7 +159,7 @@ object Main {
     * An illegal argument exception is thrown if the word provided
     * is not registered.
     */
-  def languageIndex(word: Int) = {
+  def languageIndex(word: Int): Int = {
     val result = languages.indexWhere { lang =>
       lang.code match {
         case "en" => enWords(word)
