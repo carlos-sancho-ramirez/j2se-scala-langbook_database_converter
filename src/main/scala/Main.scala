@@ -74,46 +74,70 @@ object Main {
   }
 
   case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
-
   val representations = ArrayBuffer[WordRepresentation]()
+
+  case class Acceptation(word: Int, concept: Int)
+  val acceptations = ArrayBuffer[Acceptation]()
 
   var wordCount = 0
 
-  def appendEnglishWord(symbolArray: String): Unit = {
+  /**
+    * Add a new English word in the list and returns its id
+    */
+  def appendEnglishWord(symbolArray: String): Int = {
     representations.append(WordRepresentation(wordCount, enAlphabet, addSymbolArray(symbolArray)))
+    val newIndex = wordCount
     wordCount += 1
+    newIndex
   }
 
-  def appendSpanishWord(symbolArray: String): Unit = {
+  /**
+    * Add a new Spanish word in the list and returns its id
+    */
+  def appendSpanishWord(symbolArray: String): Int = {
     representations.append(WordRepresentation(wordCount, esAlphabet, addSymbolArray(symbolArray)))
+    val newIndex = wordCount
     wordCount += 1
+    newIndex
   }
 
-  def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Unit = {
+  /**
+    * Add a new Japanese word in the list and returns its id
+    */
+  def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Int = {
     representations.append(WordRepresentation(wordCount, kanjiAlphabet, addSymbolArray(kanjiSymbolArray)))
     representations.append(WordRepresentation(wordCount, kanaAlphabet, addSymbolArray(kanaSymbolArray)))
+
+    val newIndex = wordCount
     wordCount += 1
+    newIndex
+  }
+
+  def registerWord(en: String, es: String, kanji: String, kana: String): Unit = {
+    val concept = conceptCount
+    conceptCount += 1
+
+    if (en != null) {
+      val word = appendEnglishWord(en)
+      acceptations += Acceptation(word, concept)
+    }
+
+    if (es != null) {
+      val word = appendSpanishWord(es)
+      acceptations += Acceptation(word, concept)
+    }
+
+    val jaWord = appendJapaneseWord(kanji, kana)
+    acceptations += Acceptation(jaWord, concept)
   }
 
   def initialiseDatabase(): Unit = {
-    appendEnglishWord("Language")
-    appendSpanishWord("Idioma")
-    appendJapaneseWord("言語", "げんご")
-
-    appendEnglishWord("English")
-    appendSpanishWord("Inglés")
-    appendJapaneseWord("英語", "えいご")
-
-    appendEnglishWord("Spanish")
-    appendSpanishWord("Español")
-    appendJapaneseWord("スペイン語", "スペイン")
-
-    appendEnglishWord("Japanese")
-    appendSpanishWord("Japonés")
-    appendJapaneseWord("日本語", "にほんご")
-
-    appendJapaneseWord("漢字", "かんじ")
-    appendJapaneseWord("平仮名", "かな")
+    registerWord("Language", "Idioma", "言語", "げんご")
+    registerWord("English", "Inglés", "英語", "えいご")
+    registerWord("Spanish", "Español", "スペイン語", "スペイン")
+    registerWord("Japanese", "Japonés", "日本語", "にほんご")
+    registerWord(null, null, "漢字", "かんじ")
+    registerWord(null, null, "平仮名", "かな")
   }
 
   def main(args: Array[String]): Unit = {
@@ -140,8 +164,7 @@ object Main {
             spSymbolArray
           )
 
-          appendJapaneseWord(kanjiSymbolArray, kanaSymbolArray)
-          appendSpanishWord(spSymbolArray)
+          registerWord(null, spSymbolArray, kanjiSymbolArray, kanaSymbolArray)
 
           outStream.println(rowValues.mkString(","))
           limit -= 1
@@ -159,7 +182,9 @@ object Main {
     try {
       var i = 0
       for (repr <- representations) {
-        outStream2.println(s"$i,${repr.word},${repr.alphabet},${symbolArrays(repr.symbolArray)}")
+        val concepts = acceptations.collect { case p if p.word == repr.word => p.concept}
+        val conceptsStr = concepts.mkString(" ")
+        outStream2.println(s"$i,${repr.word},$conceptsStr,${repr.alphabet},${symbolArrays(repr.symbolArray)}")
         i += 1
       }
     }
