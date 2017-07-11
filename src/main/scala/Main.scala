@@ -134,15 +134,18 @@ object Main {
       acceptations += Acceptation(word, concept)
     }
 
-    val jaWord = appendJapaneseWord(kanji, kana)
-    acceptations += Acceptation(jaWord, concept)
+    if (kana != null) {
+      val word = appendJapaneseWord(kanji, kana)
+      acceptations += Acceptation(word, concept)
+    }
   }
 
-  def registerWord(en: String, es: String, kanji: String, kana: String): Unit = {
+  def registerWord(en: String, es: String, kanji: String, kana: String): Int = {
     val concept = conceptCount
     conceptCount += 1
 
     registerWord(concept, en, es, kanji, kana)
+    concept
   }
 
   def initialiseDatabase(): Unit = {
@@ -199,7 +202,33 @@ object Main {
             spSymbolArray
           )
 
-          registerWord(null, spSymbolArray, kanjiSymbolArray, kanaSymbolArray)
+          val stopChars = Set('(', ')', '/')
+          val spSymbolArrays: Array[Array[String]] = {
+            val semicolonSeparated = {
+              if (spSymbolArray.contains(';')) {
+                spSymbolArray.split(";").map(_.trim).filter(s => s != null && s.length > 0)
+              }
+              else {
+                Array(spSymbolArray)
+              }
+            }
+
+            for (part <- semicolonSeparated) yield {
+              if (!part.contains(',') || stopChars.intersect(part.toSet).nonEmpty) {
+                Array(part)
+              }
+              else {
+                part.split(",").map(_.trim)
+              }
+            }
+          }
+
+          for (meanings <- spSymbolArrays) {
+            val concept = registerWord(null, null, kanjiSymbolArray, kanaSymbolArray)
+            for (meaning <- meanings) {
+              registerWord(concept, null, meaning, null, null)
+            }
+          }
 
           outStream.println(rowValues.mkString(","))
           limit -= 1
