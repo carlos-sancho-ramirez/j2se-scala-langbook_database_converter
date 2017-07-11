@@ -73,21 +73,25 @@ object Main {
     }
   }
 
+  val enWords = scala.collection.mutable.BitSet()
+  val esWords = scala.collection.mutable.BitSet()
+  val jaWords = scala.collection.mutable.BitSet()
+  var wordCount = 0
+
   case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
   val representations = ArrayBuffer[WordRepresentation]()
 
   case class Acceptation(word: Int, concept: Int)
   val acceptations = ArrayBuffer[Acceptation]()
 
-  var wordCount = 0
-
   /**
     * Add a new English word in the list and returns its id
     */
   def appendEnglishWord(symbolArray: String): Int = {
-    representations.append(WordRepresentation(wordCount, enAlphabet, addSymbolArray(symbolArray)))
     val newIndex = wordCount
+    representations.append(WordRepresentation(newIndex, enAlphabet, addSymbolArray(symbolArray)))
     wordCount += 1
+    enWords += newIndex
     newIndex
   }
 
@@ -95,9 +99,10 @@ object Main {
     * Add a new Spanish word in the list and returns its id
     */
   def appendSpanishWord(symbolArray: String): Int = {
-    representations.append(WordRepresentation(wordCount, esAlphabet, addSymbolArray(symbolArray)))
     val newIndex = wordCount
+    representations.append(WordRepresentation(newIndex, esAlphabet, addSymbolArray(symbolArray)))
     wordCount += 1
+    esWords += newIndex
     newIndex
   }
 
@@ -105,11 +110,12 @@ object Main {
     * Add a new Japanese word in the list and returns its id
     */
   def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Int = {
+    val newIndex = wordCount
     representations.append(WordRepresentation(wordCount, kanjiAlphabet, addSymbolArray(kanjiSymbolArray)))
     representations.append(WordRepresentation(wordCount, kanaAlphabet, addSymbolArray(kanaSymbolArray)))
 
-    val newIndex = wordCount
     wordCount += 1
+    jaWords += newIndex
     newIndex
   }
 
@@ -138,6 +144,27 @@ object Main {
     registerWord("Japanese", "Japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
+  }
+
+  /**
+    * Returns the language index that the given word belongs to.
+    * An illegal argument exception is thrown if the word provided
+    * is not registered.
+    */
+  def languageIndex(word: Int) = {
+    val result = languages.indexWhere { lang =>
+      lang.code match {
+        case "en" => enWords(word)
+        case "es" => esWords(word)
+        case "ja" => jaWords(word)
+      }
+    }
+
+    if (result < 0) {
+      throw new IllegalArgumentException(s"Word with id $word does not belong to any language")
+    }
+
+    result
   }
 
   def main(args: Array[String]): Unit = {
@@ -178,13 +205,14 @@ object Main {
       outStream.close()
     }
 
-    val outStream2 = new PrintWriter(new FileOutputStream("WordRepr.csv"))
+    val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
       var i = 0
       for (repr <- representations) {
         val concepts = acceptations.collect { case p if p.word == repr.word => p.concept}
         val conceptsStr = concepts.mkString(" ")
-        outStream2.println(s"$i,${repr.word},$conceptsStr,${repr.alphabet},${symbolArrays(repr.symbolArray)}")
+        val lang = languages(languageIndex(repr.word)).code
+        outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${symbolArrays(repr.symbolArray)}")
         i += 1
       }
     }
