@@ -178,8 +178,46 @@ object Main {
     result
   }
 
-  def main(args: Array[String]): Unit = {
-    initialiseDatabase()
+  case class OldWord(kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
+
+  def convertCollections(oldWords: Iterable[OldWord]) = {
+    for (oldWord <- oldWords) {
+      val kanjiSymbolArray = oldWord.kanjiSymbolArray
+      val kanaSymbolArray = oldWord.kanaSymbolArray
+      val spSymbolArray = oldWord.spSymbolArray
+
+      val stopChars = Set('(', ')', '/')
+      val spSymbolArrays: Array[Array[String]] = {
+        val semicolonSeparated = {
+          if (spSymbolArray.contains(';')) {
+            spSymbolArray.split(";").map(_.trim).filter(s => s != null && s.length > 0)
+          }
+          else {
+            Array(spSymbolArray)
+          }
+        }
+
+        for (part <- semicolonSeparated) yield {
+          if (!part.contains(',') || stopChars.intersect(part.toSet).nonEmpty) {
+            Array(part)
+          }
+          else {
+            part.split(",").map(_.trim)
+          }
+        }
+      }
+
+      for (meanings <- spSymbolArrays) {
+        val concept = registerWord(null, null, kanjiSymbolArray, kanaSymbolArray)
+        for (meaning <- meanings) {
+          registerWord(concept, null, meaning, null, null)
+        }
+      }
+    }
+  }
+
+  def readOldWordsFromDatabase: Iterable[OldWord] = {
+    val oldWords = ArrayBuffer[OldWord]()
 
     val outStream = new PrintWriter(new FileOutputStream("WordRegister.csv"))
     try {
@@ -202,33 +240,7 @@ object Main {
             spSymbolArray
           )
 
-          val stopChars = Set('(', ')', '/')
-          val spSymbolArrays: Array[Array[String]] = {
-            val semicolonSeparated = {
-              if (spSymbolArray.contains(';')) {
-                spSymbolArray.split(";").map(_.trim).filter(s => s != null && s.length > 0)
-              }
-              else {
-                Array(spSymbolArray)
-              }
-            }
-
-            for (part <- semicolonSeparated) yield {
-              if (!part.contains(',') || stopChars.intersect(part.toSet).nonEmpty) {
-                Array(part)
-              }
-              else {
-                part.split(",").map(_.trim)
-              }
-            }
-          }
-
-          for (meanings <- spSymbolArrays) {
-            val concept = registerWord(null, null, kanjiSymbolArray, kanaSymbolArray)
-            for (meaning <- meanings) {
-              registerWord(concept, null, meaning, null, null)
-            }
-          }
+          oldWords += OldWord(kanjiSymbolArray, kanaSymbolArray, spSymbolArray)
 
           outStream.println(rowValues.mkString(","))
           limit -= 1
@@ -241,6 +253,15 @@ object Main {
     finally {
       outStream.close()
     }
+
+    oldWords.toArray[OldWord]
+  }
+
+  def main(args: Array[String]): Unit = {
+    initialiseDatabase()
+
+    val oldWords = readOldWordsFromDatabase
+    convertCollections(oldWords)
 
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
