@@ -49,51 +49,17 @@ object Main {
     r
   }
 
-  val symbolArrays = ArrayBuffer[String]()
-
-  /**
-    * Checks if the given symbol array already exist in the list.
-    * If so, the index is returned. If not it is appended into
-    * the list and the index is returned.
-    */
-  def addSymbolArray(symbolArray: String): Int = {
-    if (symbolArray == null) {
-      throw new IllegalArgumentException()
-    }
-
-    // This should be optimized indexing the string instead of check if it exists one by one.
-    var found = -1
-    var i = 0
-    val size = symbolArrays.size
-    while (found < 0 && i < size) {
-      if (symbolArrays(i) == symbolArray) found = i
-      i += 1
-    }
-
-    if (found >= 0) found
-    else {
-      symbolArrays += symbolArray
-      size
-    }
-  }
-
   val enWords = scala.collection.mutable.BitSet()
   val esWords = scala.collection.mutable.BitSet()
   val jaWords = scala.collection.mutable.BitSet()
   var wordCount = 0
 
-  case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
-  val representations = ArrayBuffer[WordRepresentation]()
-
-  case class Acceptation(word: Int, concept: Int)
-  val acceptations = ArrayBuffer[Acceptation]()
-
   /**
     * Add a new English word in the list and returns its id
     */
-  def appendEnglishWord(symbolArray: String): Int = {
+  def appendEnglishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    representations.append(WordRepresentation(newIndex, enAlphabet, addSymbolArray(symbolArray)))
+    bufferSet.representations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
     wordCount += 1
     enWords += newIndex
     newIndex
@@ -102,9 +68,9 @@ object Main {
   /**
     * Add a new Spanish word in the list and returns its id
     */
-  def appendSpanishWord(symbolArray: String): Int = {
+  def appendSpanishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    representations.append(WordRepresentation(newIndex, esAlphabet, addSymbolArray(symbolArray)))
+    bufferSet.representations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
     wordCount += 1
     esWords += newIndex
     newIndex
@@ -113,34 +79,34 @@ object Main {
   /**
     * Add a new Japanese word in the list and returns its id
     */
-  def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Int = {
+  def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    representations.append(WordRepresentation(wordCount, kanjiAlphabet, addSymbolArray(kanjiSymbolArray)))
-    representations.append(WordRepresentation(wordCount, kanaAlphabet, addSymbolArray(kanaSymbolArray)))
+    bufferSet.representations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
+    bufferSet.representations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
 
     wordCount += 1
     jaWords += newIndex
     newIndex
   }
 
-  def registerWord(concept: Int, en: String, es: String, kanji: String, kana: String): Unit = {
+  def registerWord(concept: Int, en: String, es: String, kanji: String, kana: String)(implicit bufferSet: BufferSet): Unit = {
     if (en != null) {
       val word = appendEnglishWord(en)
-      acceptations += Acceptation(word, concept)
+      bufferSet.acceptations += Acceptation(word, concept)
     }
 
     if (es != null) {
       val word = appendSpanishWord(es)
-      acceptations += Acceptation(word, concept)
+      bufferSet.acceptations += Acceptation(word, concept)
     }
 
     if (kana != null) {
       val word = appendJapaneseWord(kanji, kana)
-      acceptations += Acceptation(word, concept)
+      bufferSet.acceptations += Acceptation(word, concept)
     }
   }
 
-  def registerWord(en: String, es: String, kanji: String, kana: String): Int = {
+  def registerWord(en: String, es: String, kanji: String, kana: String)(implicit bufferSet: BufferSet): Int = {
     val concept = conceptCount
     conceptCount += 1
 
@@ -148,13 +114,16 @@ object Main {
     concept
   }
 
-  def initialiseDatabase(): Unit = {
+  def initialiseDatabase(): BufferSet = {
+    implicit val bufferSet = new BufferSet()
     registerWord("Language", "Idioma", "言語", "げんご")
     registerWord(enLanguage, "English", "Inglés", "英語", "えいご")
     registerWord(esLanguage, "Spanish", "Español", "スペイン語", "スペイン")
     registerWord(jaLanguage, "Japanese", "Japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
+
+    bufferSet
   }
 
   /**
@@ -180,7 +149,7 @@ object Main {
 
   case class OldWord(kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
 
-  def convertCollections(oldWords: Iterable[OldWord]) = {
+  def convertCollections(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
     for (oldWord <- oldWords) {
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
       val kanaSymbolArray = oldWord.kanaSymbolArray
@@ -258,7 +227,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    initialiseDatabase()
+    implicit val bufferSet = initialiseDatabase()
 
     val oldWords = readOldWordsFromDatabase
     convertCollections(oldWords)
@@ -266,11 +235,11 @@ object Main {
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
       var i = 0
-      for (repr <- representations) {
-        val concepts = acceptations.collect { case p if p.word == repr.word => p.concept}
+      for (repr <- bufferSet.representations) {
+        val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept}
         val conceptsStr = concepts.mkString(" ")
         val lang = languages(languageIndex(repr.word)).code
-        outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${symbolArrays(repr.symbolArray)}")
+        outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${bufferSet.symbolArrays(repr.symbolArray)}")
         i += 1
       }
     }
