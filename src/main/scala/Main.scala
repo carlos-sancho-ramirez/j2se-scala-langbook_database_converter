@@ -196,10 +196,16 @@ object Main {
       val kanaSymbolArray = oldWord.kanaSymbolArray
       val spSymbolArrays = parseOldMeaning(oldWord.spSymbolArray)
 
+      val jaWord = appendJapaneseWord(kanjiSymbolArray, kanaSymbolArray)
+
       for (meanings <- spSymbolArrays) {
-        val concept = registerWord(null, null, kanjiSymbolArray, kanaSymbolArray)
+        val concept = conceptCount
+        conceptCount += 1
+
+        bufferSet.acceptations += Acceptation(jaWord, concept)
         for (meaning <- meanings) {
-          registerWord(concept, null, meaning, null, null)
+          val esWord = appendSpanishWord(meaning)
+          bufferSet.acceptations += Acceptation(esWord, concept)
         }
       }
     }
