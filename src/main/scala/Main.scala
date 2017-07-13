@@ -198,14 +198,38 @@ object Main {
 
       val jaWord = appendJapaneseWord(kanjiSymbolArray, kanaSymbolArray)
 
-      for (meanings <- spSymbolArrays) {
-        val concept = conceptCount
-        conceptCount += 1
+      val knownConcepts: Array[Int] = for (words <- spSymbolArrays) yield {
+        val arrayIndexes: Array[Int] = words.map(bufferSet.symbolArrays.indexOf)
+        val wordIndexes: Array[Int] = arrayIndexes.map { index =>
+          bufferSet.representations.find(_.symbolArray == index).map(_.word).getOrElse(-1)
+        }
+
+        val conceptIndexes: Array[Int] = wordIndexes.map { index =>
+          bufferSet.acceptations.find(_.word == index).map(_.concept).getOrElse(-1)
+        }
+
+        conceptIndexes.reduce((a,b) => if (a == b && a >= 0) a else -1)
+        // TODO: Here we should check if the already registered one does not include any extra word, which would mean that are not synonyms.
+      }
+
+      for ((meanings, knownConcept) <- spSymbolArrays zip knownConcepts) {
+        val concept = {
+          if (knownConcept >= 0) {
+            knownConcept
+          }
+          else {
+            val r = conceptCount
+            conceptCount += 1
+            r
+          }
+        }
 
         bufferSet.acceptations += Acceptation(jaWord, concept)
-        for (meaning <- meanings) {
-          val esWord = appendSpanishWord(meaning)
-          bufferSet.acceptations += Acceptation(esWord, concept)
+        if (knownConcept < 0) {
+          for (meaning <- meanings) {
+            val esWord = appendSpanishWord(meaning)
+            bufferSet.acceptations += Acceptation(esWord, concept)
+          }
         }
       }
     }
