@@ -42,4 +42,72 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex).concept
   }
+
+  it should "include a word with multiple Spanish words" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val esArrays = Array("recibir", "realizar (un exámen, classes...)", "aceptar (un reto)")
+    val kanjiArray = "受ける"
+    val kanaArray = "うける"
+    val esArray = esArrays.mkString(", ")
+
+    val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
+    Main.convertCollections(oldWords)
+
+    val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
+    kanjiIndex should be >= 0
+
+    val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
+    kanaIndex should be >= 0
+
+    val esIndex1 = bufferSet.symbolArrays.indexOf(esArrays(0))
+    esIndex1 should be >= 0
+
+    val esIndex2 = bufferSet.symbolArrays.indexOf(esArrays(1))
+    esIndex2 should be >= 0
+
+    val esIndex3 = bufferSet.symbolArrays.indexOf(esArrays(2))
+    esIndex3 should be >= 0
+
+    val kanjiReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val esReprIndex1 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex2 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex3 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
+
+    val jaWord = bufferSet.representations(kanjiReprIndex).word
+    jaWord should be >= 0
+    bufferSet.representations(kanaReprIndex).word shouldBe jaWord
+
+    val esWord1 = bufferSet.representations(esReprIndex1).word
+    esWord1 should be >= 0
+    jaWord should not be esWord1
+
+    val esWord2 = bufferSet.representations(esReprIndex2).word
+    esWord2 should be >= 0
+    jaWord should not be esWord2
+    esWord1 should not be esWord2
+
+    val esWord3 = bufferSet.representations(esReprIndex3).word
+    esWord3 should be >= 0
+    jaWord should not be esWord3
+    esWord1 should not be esWord3
+    esWord2 should not be esWord3
+
+    val jaAccIndex = bufferSet.acceptations.indexWhere(_.word == jaWord)
+    jaAccIndex should be >= 0
+
+    val esAccIndex1 = bufferSet.acceptations.indexWhere(_.word == esWord1)
+    esAccIndex1 should be >= 0
+
+    val esAccIndex2 = bufferSet.acceptations.indexWhere(_.word == esWord2)
+    esAccIndex2 should be >= 0
+
+    val esAccIndex3 = bufferSet.acceptations.indexWhere(_.word == esWord3)
+    esAccIndex3 should be >= 0
+
+    bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex1).concept
+    bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex2).concept
+    bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex3).concept
+  }
 }

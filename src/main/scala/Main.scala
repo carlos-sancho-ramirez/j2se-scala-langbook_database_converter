@@ -149,32 +149,52 @@ object Main {
 
   case class OldWord(kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
 
+  /**
+    * Take meaning field from old database base and parses it for semicolon and commas to get all
+    * Spanish words related.
+    */
+  def parseOldMeaning(spSymbolArray: String): Array[Array[String]] = {
+    val semicolonSeparated = {
+      if (spSymbolArray.contains(';')) {
+        spSymbolArray.split(";").map(_.trim).filter(s => s != null && s.length > 0)
+      }
+      else {
+        Array(spSymbolArray)
+      }
+    }
+
+    for (part <- semicolonSeparated) yield {
+      val (arr, _, _, _) = part.foldLeft((ArrayBuffer[Int](), 0, false, 0)) { case ((arr, level, wrong, i), char) =>
+        char match {
+          case '(' => (arr, level + 1, wrong, i + 1)
+          case ')' => if (level > 0) (arr, level - 1, wrong, i + 1) else (arr, 0, true, i + 1)
+          case ',' => if (level > 0) (arr, level, wrong, i + 1) else (arr += i, 0, wrong, i + 1)
+          case _ => (arr, level, wrong, i + 1)
+        }
+      }
+
+      if (arr.isEmpty) {
+        Array(part)
+      }
+      else {
+        val startArr = ArrayBuffer(0) ++ arr.map(_ + 1)
+        val endArr = arr ++ ArrayBuffer(part.length)
+        val r = startArr zip endArr map { case (start, end) =>
+          part.substring(start, end)
+        }
+        r.map(_.trim).toArray
+      }
+    }
+  }
+
+  /**
+    * Convert from old database schema to the new database schema
+    */
   def convertCollections(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
     for (oldWord <- oldWords) {
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
       val kanaSymbolArray = oldWord.kanaSymbolArray
-      val spSymbolArray = oldWord.spSymbolArray
-
-      val stopChars = Set('(', ')', '/')
-      val spSymbolArrays: Array[Array[String]] = {
-        val semicolonSeparated = {
-          if (spSymbolArray.contains(';')) {
-            spSymbolArray.split(";").map(_.trim).filter(s => s != null && s.length > 0)
-          }
-          else {
-            Array(spSymbolArray)
-          }
-        }
-
-        for (part <- semicolonSeparated) yield {
-          if (!part.contains(',') || stopChars.intersect(part.toSet).nonEmpty) {
-            Array(part)
-          }
-          else {
-            part.split(",").map(_.trim)
-          }
-        }
-      }
+      val spSymbolArrays = parseOldMeaning(oldWord.spSymbolArray)
 
       for (meanings <- spSymbolArrays) {
         val concept = registerWord(null, null, kanjiSymbolArray, kanaSymbolArray)
