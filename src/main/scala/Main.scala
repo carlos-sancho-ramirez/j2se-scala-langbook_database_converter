@@ -259,12 +259,26 @@ object Main {
         // we assume here that the concepts are different between the existing word and the new included word
         // TODO: Check if this assumption is true and implement code to execute when false
 
-        // we are assuming here that the existing word has not accRepresentation, which is not true in all cases
-        // TODO: Check if it has accRepresentation and implement code to execute when has them
-
         val previousWordReprIndex = bufferSet.wordRepresentations.indexWhere( repr =>
           repr.alphabet == kanjiAlphabet && repr.word == jaWord
         )
+
+        val (_, accIndexes) = bufferSet.acceptations.foldLeft((0, Set[Int]())) {
+          case ((i, result), acc) =>
+            if (acc.word == jaWord) (i + 1, result + i)
+            else (i + 1, result)
+        }
+
+        val existsPreviousAccRepr = bufferSet.accRepresentations.exists(repr => accIndexes(repr.acc))
+        val (_, previousAccReprIndexes) = bufferSet.accRepresentations.foldLeft((0,Set[Int]())) {
+          case ((i, set), accRepr) =>
+            if (accIndexes(accRepr.acc)) (i + 1, set + i)
+            else (i + 1, set)
+        }
+
+        // We are only handling the situation of having only 1 concept in this word
+        // TODO: Extend this to cover multiple acceptations
+        val thisAcc = thisAccIndexes.head
 
         if (previousWordReprIndex >= 0) {
           val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
@@ -272,12 +286,12 @@ object Main {
           val otherAcc = bufferSet.acceptations.indexWhere(acc => acc.word == jaWord)
           bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
 
-          // We are only handling the situation of having only 1 concept in this word
-          // TODO: Extend this to cover multiple acceptations
-          val thisAcc = thisAccIndexes.head
           bufferSet.accRepresentations += AccRepresentation(thisAcc, kanjiSymbolArrayIndex)
 
           bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
+        }
+        else if (existsPreviousAccRepr) {
+          bufferSet.accRepresentations += AccRepresentation(thisAcc, kanjiSymbolArrayIndex)
         }
       }
 
@@ -344,10 +358,13 @@ object Main {
     try {
       var i = 0
       for (repr <- bufferSet.wordRepresentations) {
-        val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept}
-        val conceptsStr = concepts.mkString(" ")
-        val lang = languages(languageIndex(repr.word)).code
-        outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${bufferSet.symbolArrays(repr.symbolArray)}")
+        if (repr != InvalidRegister.wordRepresentation) {
+          val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
+          val conceptsStr = concepts.mkString(" ")
+          val lang = languages(languageIndex(repr.word)).code
+          outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${bufferSet.symbolArrays(repr.symbolArray)}")
+        }
+
         i += 1
       }
     }

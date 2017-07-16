@@ -324,4 +324,99 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
   }
+
+  it should "include 3 accRepresentations when 3 words match its pronunciation" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1 = "髪"
+    val kanjiArray2 = "紙"
+    val kanjiArray3 = "神"
+    val kanaArray = "かみ"
+    val esArray1 = "cabello"
+    val esArray2 = "papel"
+    val esArray3 = "dios"
+
+    val oldWords = Iterable(
+      Main.OldWord(kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(kanjiArray2, kanaArray, esArray2),
+      Main.OldWord(kanjiArray3, kanaArray, esArray3)
+    )
+    Main.convertCollections(oldWords)
+
+    val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
+    kanjiIndex1 should be >= 0
+
+    val kanjiIndex2 = bufferSet.symbolArrays.indexOf(kanjiArray2)
+    kanjiIndex2 should be >= 0
+
+    val kanjiIndex3 = bufferSet.symbolArrays.indexOf(kanjiArray3)
+    kanjiIndex3 should be >= 0
+
+    val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
+    kanaIndex should be >= 0
+
+    val esIndex1 = bufferSet.symbolArrays.indexOf(esArray1)
+    esIndex1 should be >= 0
+
+    val esIndex2 = bufferSet.symbolArrays.indexOf(esArray2)
+    esIndex2 should be >= 0
+
+    val esIndex3 = bufferSet.symbolArrays.indexOf(esArray3)
+    esIndex3 should be >= 0
+
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
+
+    val kanjiReprIndex1 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex1)
+    val kanjiReprIndex2 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex2)
+    val kanjiReprIndex3 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex3)
+
+    val jaAccIndex1 = bufferSet.accRepresentations(kanjiReprIndex1).acc
+    jaAccIndex1 should be >= 0
+
+    val jaAccIndex2 = bufferSet.accRepresentations(kanjiReprIndex2).acc
+    jaAccIndex2 should be >= 0
+
+    val jaAccIndex3 = bufferSet.accRepresentations(kanjiReprIndex3).acc
+    jaAccIndex3 should be >= 0
+
+    bufferSet.acceptations(jaAccIndex1).word shouldBe jaWord
+    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
+    bufferSet.acceptations(jaAccIndex3).word shouldBe jaWord
+
+    val esReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex3 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
+
+    val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
+    esWord1 should be >= 0
+
+    val esWord2 = bufferSet.wordRepresentations(esReprIndex2).word
+    esWord2 should be >= 0
+
+    val esWord3 = bufferSet.wordRepresentations(esReprIndex3).word
+    esWord3 should be >= 0
+
+    jaWord should not be esWord1
+    jaWord should not be esWord2
+    jaWord should not be esWord3
+
+    val esConcept1 = bufferSet.acceptations.find(_.word == esWord1).get.concept
+    val esConcept2 = bufferSet.acceptations.find(_.word == esWord2).get.concept
+    val esConcept3 = bufferSet.acceptations.find(_.word == esWord3).get.concept
+    val jaConcept1 = bufferSet.acceptations(jaAccIndex1).concept
+    val jaConcept2 = bufferSet.acceptations(jaAccIndex2).concept
+    val jaConcept3 = bufferSet.acceptations(jaAccIndex3).concept
+
+    jaConcept1 shouldBe esConcept1
+    jaConcept2 shouldBe esConcept2
+    jaConcept3 shouldBe esConcept3
+    jaConcept1 should not be jaConcept2
+    jaConcept1 should not be jaConcept3
+    jaConcept2 should not be jaConcept3
+
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex3) shouldBe false
+  }
 }
