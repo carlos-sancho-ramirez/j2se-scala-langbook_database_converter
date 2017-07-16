@@ -6,9 +6,9 @@ class MainTest extends FlatSpec with Matchers {
   it should "include a word and its acceptation properly" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
-    val kanjiArray = "英語"
-    val kanaArray = "えいご"
-    val esArray = "Inglés"
+    val kanjiArray = "家"
+    val kanaArray = "いえ"
+    val esArray = "casa"
 
     val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
     Main.convertCollections(oldWords)
@@ -22,15 +22,15 @@ class MainTest extends FlatSpec with Matchers {
     val esIndex = bufferSet.symbolArrays.indexOf(esArray)
     esIndex should be >= 0
 
-    val kanjiReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
-    val kanaReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
-    val esReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex && repr.alphabet == Main.esAlphabet)
+    val kanjiReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val esReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex && repr.alphabet == Main.esAlphabet)
 
-    val jaWord = bufferSet.representations(kanjiReprIndex).word
+    val jaWord = bufferSet.wordRepresentations(kanjiReprIndex).word
     jaWord should be >= 0
-    bufferSet.representations(kanaReprIndex).word shouldBe jaWord
+    bufferSet.wordRepresentations(kanaReprIndex).word shouldBe jaWord
 
-    val esWord = bufferSet.representations(esReprIndex).word
+    val esWord = bufferSet.wordRepresentations(esReprIndex).word
     esWord should be >= 0
     jaWord should not be esWord
 
@@ -69,26 +69,26 @@ class MainTest extends FlatSpec with Matchers {
     val esIndex3 = bufferSet.symbolArrays.indexOf(esArrays(2))
     esIndex3 should be >= 0
 
-    val kanjiReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
-    val kanaReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
-    val esReprIndex1 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
-    val esReprIndex2 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
-    val esReprIndex3 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
+    val kanjiReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val esReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex3 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
 
-    val jaWord = bufferSet.representations(kanjiReprIndex).word
+    val jaWord = bufferSet.wordRepresentations(kanjiReprIndex).word
     jaWord should be >= 0
-    bufferSet.representations(kanaReprIndex).word shouldBe jaWord
+    bufferSet.wordRepresentations(kanaReprIndex).word shouldBe jaWord
 
-    val esWord1 = bufferSet.representations(esReprIndex1).word
+    val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
     esWord1 should be >= 0
     jaWord should not be esWord1
 
-    val esWord2 = bufferSet.representations(esReprIndex2).word
+    val esWord2 = bufferSet.wordRepresentations(esReprIndex2).word
     esWord2 should be >= 0
     jaWord should not be esWord2
     esWord1 should not be esWord2
 
-    val esWord3 = bufferSet.representations(esReprIndex3).word
+    val esWord3 = bufferSet.wordRepresentations(esReprIndex3).word
     esWord3 should be >= 0
     jaWord should not be esWord3
     esWord1 should not be esWord3
@@ -139,26 +139,26 @@ class MainTest extends FlatSpec with Matchers {
     val esIndex3 = bufferSet.symbolArrays.indexOf(esArray3)
     esIndex3 should be >= 0
 
-    val kanjiReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
-    val kanaReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
-    val esReprIndex1 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
-    val esReprIndex2 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
-    val esReprIndex3 = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
+    val kanjiReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val esReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex3 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
 
-    val jaWord = bufferSet.representations(kanjiReprIndex).word
+    val jaWord = bufferSet.wordRepresentations(kanjiReprIndex).word
     jaWord should be >= 0
-    bufferSet.representations(kanaReprIndex).word shouldBe jaWord
+    bufferSet.wordRepresentations(kanaReprIndex).word shouldBe jaWord
 
-    val esWord1 = bufferSet.representations(esReprIndex1).word
+    val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
     esWord1 should be >= 0
     jaWord should not be esWord1
 
-    val esWord2 = bufferSet.representations(esReprIndex2).word
+    val esWord2 = bufferSet.wordRepresentations(esReprIndex2).word
     esWord2 should be >= 0
     jaWord should not be esWord2
     esWord1 should not be esWord2
 
-    val esWord3 = bufferSet.representations(esReprIndex3).word
+    val esWord3 = bufferSet.wordRepresentations(esReprIndex3).word
     esWord3 should be >= 0
     jaWord should not be esWord3
     esWord1 should not be esWord3
@@ -223,21 +223,21 @@ class MainTest extends FlatSpec with Matchers {
     val esIndex = bufferSet.symbolArrays.indexOf(esArray)
     esIndex should be >= 0
 
-    val kanjiReprIndex1 = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex1 && repr.alphabet == Main.kanjiAlphabet)
-    val kanaReprIndex1 = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex1 && repr.alphabet == Main.kanaAlphabet)
-    val kanjiReprIndex2 = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanjiIndex2 && repr.alphabet == Main.kanjiAlphabet)
-    val kanaReprIndex2 = bufferSet.representations.indexWhere(repr => repr.symbolArray == kanaIndex2 && repr.alphabet == Main.kanaAlphabet)
-    val esReprIndex = bufferSet.representations.indexWhere(repr => repr.symbolArray == esIndex && repr.alphabet == Main.esAlphabet)
+    val kanjiReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex1 && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex1 && repr.alphabet == Main.kanaAlphabet)
+    val kanjiReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex2 && repr.alphabet == Main.kanjiAlphabet)
+    val kanaReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex2 && repr.alphabet == Main.kanaAlphabet)
+    val esReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex && repr.alphabet == Main.esAlphabet)
 
-    val jaWord1 = bufferSet.representations(kanjiReprIndex1).word
+    val jaWord1 = bufferSet.wordRepresentations(kanjiReprIndex1).word
     jaWord1 should be >= 0
-    bufferSet.representations(kanaReprIndex1).word shouldBe jaWord1
+    bufferSet.wordRepresentations(kanaReprIndex1).word shouldBe jaWord1
 
-    val jaWord2 = bufferSet.representations(kanjiReprIndex2).word
+    val jaWord2 = bufferSet.wordRepresentations(kanjiReprIndex2).word
     jaWord2 should be >= 0
-    bufferSet.representations(kanaReprIndex2).word shouldBe jaWord2
+    bufferSet.wordRepresentations(kanaReprIndex2).word shouldBe jaWord2
 
-    val esWord = bufferSet.representations(esReprIndex).word
+    val esWord = bufferSet.wordRepresentations(esReprIndex).word
     esWord should be >= 0
     jaWord1 should not be esWord
     jaWord2 should not be esWord
@@ -253,5 +253,75 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet.acceptations(jaAccIndex1).concept shouldBe bufferSet.acceptations(esAccIndex).concept
     bufferSet.acceptations(jaAccIndex2).concept shouldBe bufferSet.acceptations(esAccIndex).concept
+  }
+
+  it should "include 2 accRepresentations when only matching its pronunciation" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1 = "早い"
+    val kanjiArray2 = "速い"
+    val kanaArray = "はやい"
+    val esArray1 = "temprano"
+    val esArray2 = "rápido"
+
+    val oldWords = Iterable(
+      Main.OldWord(kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(kanjiArray2, kanaArray, esArray2)
+    )
+    Main.convertCollections(oldWords)
+
+    val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
+    kanjiIndex1 should be >= 0
+
+    val kanjiIndex2 = bufferSet.symbolArrays.indexOf(kanjiArray2)
+    kanjiIndex2 should be >= 0
+
+    val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
+    kanaIndex should be >= 0
+
+    val esIndex1 = bufferSet.symbolArrays.indexOf(esArray1)
+    esIndex1 should be >= 0
+
+    val esIndex2 = bufferSet.symbolArrays.indexOf(esArray2)
+    esIndex2 should be >= 0
+
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
+
+    val kanjiReprIndex1 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex1)
+    val kanjiReprIndex2 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex2)
+
+    val jaAccIndex1 = bufferSet.accRepresentations(kanjiReprIndex1).acc
+    jaAccIndex1 should be >= 0
+
+    val jaAccIndex2 = bufferSet.accRepresentations(kanjiReprIndex2).acc
+    jaAccIndex2 should be >= 0
+
+    bufferSet.acceptations(jaAccIndex1).word shouldBe jaWord
+    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
+
+    val esReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    val esReprIndex2 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
+
+    val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
+    esWord1 should be >= 0
+
+    val esWord2 = bufferSet.wordRepresentations(esReprIndex2).word
+    esWord2 should be >= 0
+
+    jaWord should not be esWord1
+    jaWord should not be esWord2
+
+    val esConcept1 = bufferSet.acceptations.find(_.word == esWord1).get.concept
+    val esConcept2 = bufferSet.acceptations.find(_.word == esWord2).get.concept
+    val jaConcept1 = bufferSet.acceptations(jaAccIndex1).concept
+    val jaConcept2 = bufferSet.acceptations(jaAccIndex2).concept
+
+    jaConcept1 shouldBe esConcept1
+    jaConcept2 shouldBe esConcept2
+    jaConcept1 should not be jaConcept2
+
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
   }
 }

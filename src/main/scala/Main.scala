@@ -59,7 +59,7 @@ object Main {
     */
   def appendEnglishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    bufferSet.representations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
+    bufferSet.wordRepresentations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
     wordCount += 1
     enWords += newIndex
     newIndex
@@ -70,7 +70,7 @@ object Main {
     */
   def appendSpanishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    bufferSet.representations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+    bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
     wordCount += 1
     esWords += newIndex
     newIndex
@@ -81,8 +81,8 @@ object Main {
     */
   def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String)(implicit bufferSet: BufferSet): Int = {
     val newIndex = wordCount
-    bufferSet.representations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
-    bufferSet.representations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
+    bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
+    bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
 
     wordCount += 1
     jaWords += newIndex
@@ -192,27 +192,51 @@ object Main {
     */
   def convertCollections(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
     for (oldWord <- oldWords) {
+      // Retrieve strings from old word
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
       val kanaSymbolArray = oldWord.kanaSymbolArray
       val spSymbolArrays = parseOldMeaning(oldWord.spSymbolArray)
 
-      val jaWord = appendJapaneseWord(kanjiSymbolArray, kanaSymbolArray)
+      // Register all strings in the database if still not present and retrieve its ids
+      val kanjiSymbolArrayIndex = bufferSet.addSymbolArray(kanjiSymbolArray)
+      val kanaSymbolArrayIndex = bufferSet.addSymbolArray(kanaSymbolArray)
+      val spSymbolArrayIndexes = spSymbolArrays.map(_.map(bufferSet.addSymbolArray))
 
-      val knownConcepts: Array[Int] = for (words <- spSymbolArrays) yield {
-        val arrayIndexes: Array[Int] = words.map(bufferSet.symbolArrays.indexOf)
+      // It is assumed that there cannot be more than one word with the same kana
+      val knownJaWord: Option[Int] = bufferSet.wordRepresentations.collectFirst {
+        case repr if repr.symbolArray == kanaSymbolArrayIndex && repr.alphabet == kanaAlphabet =>
+          repr.word
+      }
+
+      val knownConcepts: Array[Int] = for (arrayIndexes <- spSymbolArrayIndexes) yield {
         val wordIndexes: Array[Int] = arrayIndexes.map { index =>
-          bufferSet.representations.find(_.symbolArray == index).map(_.word).getOrElse(-1)
+          bufferSet.wordRepresentations.collectFirst {
+            case repr if repr.symbolArray == index => repr.word
+          }.getOrElse(-1)
         }
 
         val conceptIndexes: Array[Int] = wordIndexes.map { index =>
-          bufferSet.acceptations.find(_.word == index).map(_.concept).getOrElse(-1)
+          bufferSet.acceptations.collectFirst {
+            case acc if acc.word == index => acc.concept
+          }.getOrElse(-1)
         }
 
         conceptIndexes.reduce((a,b) => if (a == b && a >= 0) a else -1)
         // TODO: Here we should check if the already registered one does not include any extra word, which would mean that are not synonyms.
       }
 
-      for ((meanings, knownConcept) <- spSymbolArrays zip knownConcepts) {
+      // If another word with the same kana is found we reuse it as they are considered to be the
+      // same word, if not we create the representation for it
+      val jaWord = knownJaWord.getOrElse {
+        val jaWord = wordCount
+        wordCount += 1
+        jaWords += jaWord
+
+        bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanaAlphabet, kanaSymbolArrayIndex))
+        jaWord
+      }
+
+      val thisAccIndexes: Array[Int] = for (knownConcept <- knownConcepts) yield {
         val concept = {
           if (knownConcept >= 0) {
             knownConcept
@@ -225,9 +249,43 @@ object Main {
         }
 
         bufferSet.acceptations += Acceptation(jaWord, concept)
+        bufferSet.acceptations.length - 1
+      }
+
+      if (knownJaWord.isEmpty /* New word */) {
+        bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanjiAlphabet, kanjiSymbolArrayIndex))
+      }
+      else {
+        // we assume here that the concepts are different between the existing word and the new included word
+        // TODO: Check if this assumption is true and implement code to execute when false
+
+        // we are assuming here that the existing word has not accRepresentation, which is not true in all cases
+        // TODO: Check if it has accRepresentation and implement code to execute when has them
+
+        val previousWordReprIndex = bufferSet.wordRepresentations.indexWhere( repr =>
+          repr.alphabet == kanjiAlphabet && repr.word == jaWord
+        )
+
+        if (previousWordReprIndex >= 0) {
+          val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
+
+          val otherAcc = bufferSet.acceptations.indexWhere(acc => acc.word == jaWord)
+          bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
+
+          // We are only handling the situation of having only 1 concept in this word
+          // TODO: Extend this to cover multiple acceptations
+          val thisAcc = thisAccIndexes.head
+          bufferSet.accRepresentations += AccRepresentation(thisAcc, kanjiSymbolArrayIndex)
+
+          bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
+        }
+      }
+
+      for (((meanings, knownConcept), accIndex) <- spSymbolArrays zip knownConcepts zip thisAccIndexes) {
         if (knownConcept < 0) {
           for (meaning <- meanings) {
             val esWord = appendSpanishWord(meaning)
+            val concept = bufferSet.acceptations(accIndex).concept
             bufferSet.acceptations += Acceptation(esWord, concept)
           }
         }
@@ -285,7 +343,7 @@ object Main {
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
       var i = 0
-      for (repr <- bufferSet.representations) {
+      for (repr <- bufferSet.wordRepresentations) {
         val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept}
         val conceptsStr = concepts.mkString(" ")
         val lang = languages(languageIndex(repr.word)).code
