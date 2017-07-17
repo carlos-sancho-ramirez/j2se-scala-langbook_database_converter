@@ -419,4 +419,101 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex3) shouldBe false
   }
+
+  it should "include same word already included with different kanji and concept and multiple Spanish concepts" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1 = "訪ねる"
+    val kanjiArray2 = "尋ねる"
+    val kanaArray = "たずねる"
+    val esArray1 = "visitar"
+    val esArrays2 = Array(
+      Array("preguntar", "indagar"),
+      Array("buscar", "investigar")
+    )
+    val esArray2 = esArrays2.map(_.mkString(", ")).mkString("; ")
+
+    val oldWords = Iterable(
+      Main.OldWord(kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(kanjiArray2, kanaArray, esArray2)
+    )
+    Main.convertCollections(oldWords)
+
+    val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
+    kanjiIndex1 should be >= 0
+
+    val kanjiIndex2 = bufferSet.symbolArrays.indexOf(kanjiArray2)
+    kanjiIndex2 should be >= 0
+
+    val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
+    kanaIndex should be >= 0
+
+    val esIndex1 = bufferSet.symbolArrays.indexOf(esArray1)
+    esIndex1 should be >= 0
+
+    val esIndexes2 = esArrays2.map(_.map(bufferSet.symbolArrays.indexOf))
+    for (arrays <- esIndexes2; array <- arrays) array should be >= 0
+
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
+    bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
+
+    val kanjiAccReprIndex1 = bufferSet.accRepresentations.indexWhere(_.symbolArray == kanjiIndex1)
+    kanjiAccReprIndex1 should be >= 0
+
+    val kanjiAccReprIndex2a = bufferSet.accRepresentations.indexWhere(_.symbolArray == kanjiIndex2)
+    kanjiAccReprIndex2a should be >= 0
+
+    val kanjiAccReprIndex2b = bufferSet.accRepresentations.indexWhere(_.symbolArray == kanjiIndex2, kanjiAccReprIndex2a + 1)
+    kanjiAccReprIndex2b should be >= 0
+
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
+    kanaReprIndex should be >= 0
+
+    val esReprIndex1 = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
+    esReprIndex1 should be >= 0
+
+    val esReprIndexes2 = esIndexes2.map(_.map(index => bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == index && repr.alphabet == Main.esAlphabet)))
+    for (indexes <- esReprIndexes2; index <- indexes) index should be >= 0
+
+    val accIndex1 = bufferSet.accRepresentations(kanjiAccReprIndex1).acc
+    val accIndex2a = bufferSet.accRepresentations(kanjiAccReprIndex2a).acc
+    val accIndex2b = bufferSet.accRepresentations(kanjiAccReprIndex2b).acc
+
+    val concept1 = bufferSet.acceptations(accIndex1).concept
+    val concept2a = bufferSet.acceptations(accIndex2a).concept
+    val concept2b = bufferSet.acceptations(accIndex2b).concept
+    concept1 should not be concept2a
+    concept1 should not be concept2b
+    concept2a should not be concept2b
+
+    val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
+    bufferSet.acceptations(accIndex1).word shouldBe jaWord
+    bufferSet.acceptations(accIndex2a).word shouldBe jaWord
+    bufferSet.acceptations(accIndex2b).word shouldBe jaWord
+
+    val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
+    esWord1 should be >= 0
+    jaWord should not be esWord1
+
+    val esWords2 = esReprIndexes2.map(_.map(index => bufferSet.wordRepresentations(index).word))
+    for (words <- esWords2; word <- words) {
+      word should be >= 0
+      word should not be jaWord
+      word should not be esWord1
+    }
+
+    val esConceptIndexes2 = esWords2.map(_.map { word =>
+      bufferSet.acceptations.collectFirst {
+        case acc if acc.word == word => acc.concept
+      }.get
+    })
+
+    val esConcepts2 = esConceptIndexes2.map(_.reduce { (a,b) =>
+      if (a != b) throw new AssertionError()
+      a
+    }).toSet
+
+    esConcepts2 should contain (concept2a)
+    esConcepts2 should contain (concept2b)
+  }
 }

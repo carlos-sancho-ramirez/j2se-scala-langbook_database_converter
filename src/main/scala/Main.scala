@@ -276,22 +276,22 @@ object Main {
             else (i + 1, set)
         }
 
-        // We are only handling the situation of having only 1 concept in this word
-        // TODO: Extend this to cover multiple acceptations
-        val thisAcc = thisAccIndexes.head
-
         if (previousWordReprIndex >= 0) {
           val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
 
           val otherAcc = bufferSet.acceptations.indexWhere(acc => acc.word == jaWord)
           bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
 
-          bufferSet.accRepresentations += AccRepresentation(thisAcc, kanjiSymbolArrayIndex)
+          for (acc <- thisAccIndexes) {
+            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
+          }
 
           bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
         }
         else if (existsPreviousAccRepr) {
-          bufferSet.accRepresentations += AccRepresentation(thisAcc, kanjiSymbolArrayIndex)
+          for (acc <- thisAccIndexes) {
+            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
+          }
         }
       }
 
