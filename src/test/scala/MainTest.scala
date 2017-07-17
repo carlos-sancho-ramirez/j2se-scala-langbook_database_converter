@@ -420,7 +420,7 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex3) shouldBe false
   }
 
-  it should "include same word already included with different kanji and concept and multiple Spanish concepts" in {
+  def checkSameJapaneseWordWithMoreThan2Concepts(shifter: Iterable[Main.OldWord] => Iterable[Main.OldWord]) = {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray1 = "訪ねる"
@@ -433,10 +433,10 @@ class MainTest extends FlatSpec with Matchers {
     )
     val esArray2 = esArrays2.map(_.mkString(", ")).mkString("; ")
 
-    val oldWords = Iterable(
+    val oldWords = shifter(Iterable(
       Main.OldWord(kanjiArray1, kanaArray, esArray1),
       Main.OldWord(kanjiArray2, kanaArray, esArray2)
-    )
+    ))
     Main.convertCollections(oldWords)
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
@@ -515,5 +515,13 @@ class MainTest extends FlatSpec with Matchers {
 
     esConcepts2 should contain (concept2a)
     esConcepts2 should contain (concept2b)
+  }
+
+  it should "include same Japanese word with more than 2 concepts" in {
+    checkSameJapaneseWordWithMoreThan2Concepts(a => a)
+  }
+
+  it should "include same Japanese word with more than 2 concepts (order reversed)" in {
+    checkSameJapaneseWordWithMoreThan2Concepts(a => a.foldLeft(List[Main.OldWord]())((list, e) => e :: list))
   }
 }
