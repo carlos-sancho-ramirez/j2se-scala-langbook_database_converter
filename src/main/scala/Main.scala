@@ -252,7 +252,7 @@ object Main {
         bufferSet.acceptations.length - 1
       }
 
-      if (knownJaWord.isEmpty /* New word */) {
+      if (knownJaWord.isEmpty /* New word */ && kanjiSymbolArrayIndex != kanaSymbolArrayIndex) {
         bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanjiAlphabet, kanjiSymbolArrayIndex))
       }
       else {
@@ -270,6 +270,10 @@ object Main {
         }
 
         val existsPreviousAccRepr = bufferSet.accRepresentations.exists(repr => accIndexes(repr.acc))
+
+        // We are taking actions here assuming that there is always a previous word with kanji
+        // representation. It is false if kanji and kana matches
+        // TODO: Handle the situation where the previous word has no kanji representation
 
         if (previousWordReprIndex >= 0) {
           val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray

@@ -420,7 +420,7 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex3) shouldBe false
   }
 
-  def checkSameJapaneseWordWithMoreThan2Concepts(shifter: Iterable[Main.OldWord] => Iterable[Main.OldWord]) = {
+  private def checkSameJapaneseWordWithMoreThan2Concepts(shifter: Iterable[Main.OldWord] => Iterable[Main.OldWord]) = {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray1 = "訪ねる"
@@ -523,5 +523,44 @@ class MainTest extends FlatSpec with Matchers {
 
   it should "include same Japanese word with more than 2 concepts (order reversed)" in {
     checkSameJapaneseWordWithMoreThan2Concepts(a => a.foldLeft(List[Main.OldWord]())((list, e) => e :: list))
+  }
+
+  it should "not include the kanji if it matches the kana" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanaArray = "だから"
+    val esArray = "por esa razón"
+
+    val oldWords = Iterable(Main.OldWord(kanaArray, kanaArray, esArray))
+    Main.convertCollections(oldWords)
+
+    val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
+    kanaIndex should be >= 0
+
+    bufferSet.symbolArrays.indexOf(kanaArray, kanaIndex + 1) should be < 0
+
+    val esIndex = bufferSet.symbolArrays.indexOf(esArray)
+    esIndex should be >= 0
+
+    val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex)
+    bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex, kanaReprIndex + 1) should be < 0
+    bufferSet.wordRepresentations(kanaReprIndex).alphabet shouldBe Main.kanaAlphabet
+
+    val esReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == esIndex && repr.alphabet == Main.esAlphabet)
+
+    val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
+    jaWord should be >= 0
+
+    val esWord = bufferSet.wordRepresentations(esReprIndex).word
+    esWord should be >= 0
+    jaWord should not be esWord
+
+    val jaAccIndex = bufferSet.acceptations.indexWhere(_.word == jaWord)
+    jaAccIndex should be >= 0
+
+    val esAccIndex = bufferSet.acceptations.indexWhere(_.word == esWord)
+    esAccIndex should be >= 0
+
+    bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex).concept
   }
 }
