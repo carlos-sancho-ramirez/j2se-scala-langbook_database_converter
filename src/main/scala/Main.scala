@@ -252,8 +252,10 @@ object Main {
         bufferSet.acceptations.length - 1
       }
 
-      if (knownJaWord.isEmpty /* New word */ && kanjiSymbolArrayIndex != kanaSymbolArrayIndex) {
-        bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanjiAlphabet, kanjiSymbolArrayIndex))
+      if (knownJaWord.isEmpty /* New word */) {
+        if (kanjiSymbolArrayIndex != kanaSymbolArrayIndex) {
+          bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanjiAlphabet, kanjiSymbolArrayIndex))
+        }
       }
       else {
         // we assume here that the concepts are different between the existing word and the new included word
@@ -270,10 +272,6 @@ object Main {
         }
 
         val existsPreviousAccRepr = bufferSet.accRepresentations.exists(repr => accIndexes(repr.acc))
-
-        // We are taking actions here assuming that there is always a previous word with kanji
-        // representation. It is false if kanji and kana matches
-        // TODO: Handle the situation where the previous word has no kanji representation
 
         if (previousWordReprIndex >= 0) {
           val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
@@ -293,6 +291,11 @@ object Main {
           bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
         }
         else if (existsPreviousAccRepr) {
+          for (acc <- thisAccIndexes) {
+            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
+          }
+        }
+        else {
           for (acc <- thisAccIndexes) {
             bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
           }
@@ -361,13 +364,27 @@ object Main {
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
       var i = 0
+
+      // Dump all words in wordRepresentations
       for (repr <- bufferSet.wordRepresentations) {
         if (repr != InvalidRegister.wordRepresentation) {
           val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
           val conceptsStr = concepts.mkString(" ")
           val lang = languages(languageIndex(repr.word)).code
-          outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},${bufferSet.symbolArrays(repr.symbolArray)}")
+          val str = bufferSet.symbolArrays(repr.symbolArray)
+          outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},$str")
         }
+
+        i += 1
+      }
+
+      // Dump all words in accRepresentations
+      for (repr <- bufferSet.accRepresentations) {
+        val lang = "ja"
+        val alphabet = kanjiAlphabet
+        val acc = bufferSet.acceptations(repr.acc)
+        val str = bufferSet.symbolArrays(repr.symbolArray)
+        outStream2.println(s"$i,${acc.concept},${acc.word},$lang,$alphabet,$str")
 
         i += 1
       }
