@@ -265,14 +265,6 @@ object Main {
           repr.alphabet == kanjiAlphabet && repr.word == jaWord
         )
 
-        val (_, accIndexes) = bufferSet.acceptations.foldLeft((0, Set[Int]())) {
-          case ((i, result), acc) =>
-            if (acc.word == jaWord) (i + 1, result + i)
-            else (i + 1, result)
-        }
-
-        val existsPreviousAccRepr = bufferSet.accRepresentations.exists(repr => accIndexes(repr.acc))
-
         if (previousWordReprIndex >= 0) {
           val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
 
@@ -284,21 +276,11 @@ object Main {
             bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
           }
 
-          for (acc <- thisAccIndexes) {
-            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
-          }
-
           bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
         }
-        else if (existsPreviousAccRepr) {
-          for (acc <- thisAccIndexes) {
-            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
-          }
-        }
-        else {
-          for (acc <- thisAccIndexes) {
-            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
-          }
+
+        for (acc <- thisAccIndexes) {
+          bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
         }
       }
 
