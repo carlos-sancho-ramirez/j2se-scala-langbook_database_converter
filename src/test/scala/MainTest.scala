@@ -441,18 +441,24 @@ class MainTest extends FlatSpec with Matchers {
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
     kanjiIndex1 should be >= 0
+    bufferSet.symbolArrays.indexOf(kanjiArray1, kanjiIndex1 + 1) should be < 0
 
     val kanjiIndex2 = bufferSet.symbolArrays.indexOf(kanjiArray2)
     kanjiIndex2 should be >= 0
+    bufferSet.symbolArrays.indexOf(kanjiArray2, kanjiIndex2 + 1) should be < 0
 
     val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
     kanaIndex should be >= 0
+    bufferSet.symbolArrays.indexOf(kanaArray, kanaIndex + 1) should be < 0
 
     val esIndex1 = bufferSet.symbolArrays.indexOf(esArray1)
     esIndex1 should be >= 0
+    bufferSet.symbolArrays.indexOf(esArray1, esIndex1 + 1) should be < 0
 
     val esIndexes2 = esArrays2.map(_.map(bufferSet.symbolArrays.indexOf))
-    for (arrays <- esIndexes2; array <- arrays) array should be >= 0
+    for (arrays <- esIndexes2; array <- arrays) {
+      array should be >= 0
+    }
 
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false

@@ -360,13 +360,23 @@ object Main {
         i += 1
       }
 
-      // Dump all words in accRepresentations
-      for (repr <- bufferSet.accRepresentations) {
-        val lang = "ja"
-        val alphabet = kanjiAlphabet
+      case class AccReprDumpKey(word: Int, str: String)
+      val accReprMap = bufferSet.accRepresentations.foldLeft(Map[AccReprDumpKey, Set[Int]]()) { (map, repr) =>
         val acc = bufferSet.acceptations(repr.acc)
         val str = bufferSet.symbolArrays(repr.symbolArray)
-        outStream2.println(s"$i,${acc.concept},${acc.word},$lang,$alphabet,$str")
+        val concept = acc.concept
+        val word = acc.word
+
+        val key = AccReprDumpKey(word, str)
+        val newValue = map.getOrElse(key, Set[Int]()) + concept
+        map.updated(key, newValue)
+      }
+
+      // Dump all words in accRepresentations
+      for ((key, concepts) <- accReprMap) {
+        val lang = "ja"
+        val alphabet = kanjiAlphabet
+        outStream2.println(s"$i,${concepts.mkString(" ")},${key.word},$lang,$alphabet,${key.str}")
 
         i += 1
       }
