@@ -200,7 +200,7 @@ object Main {
   /**
     * Convert from old database schema to the new database schema
     */
-  def convertCollections(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
+  def convertWords(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
@@ -306,6 +306,40 @@ object Main {
     }
   }
 
+  def convertBunches(oldLists: Map[Int, String])(implicit bufferSet: BufferSet): Unit = {
+    val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
+
+    for ((listId, name) <- oldLists) {
+      val index = bufferSet.addSymbolArray(name)
+      val wordOption = bufferSet.wordRepresentations.collectFirst {
+        case repr if repr.symbolArray == index && repr.alphabet == esAlphabet => repr.word
+      }
+      val concepts = wordOption.toArray.flatMap(word => bufferSet.acceptations.collect {
+        case acc if acc.word == word => acc.concept
+      })
+
+      if (concepts.length == 1) {
+        lists += ((concepts.head, listId, false, name))
+      }
+      else {
+        val word = wordOption.getOrElse(appendSpanishWord(name))
+        val concept = conceptCount
+        conceptCount += 1
+
+        bufferSet.acceptations += Acceptation(word, concept)
+        lists += ((concept, listId, wordOption.isEmpty, name))
+      }
+    }
+
+    val newWords = lists.collect { case (_,_,newWord,name) if newWord => "\n  " + name }
+    val reusedWords = lists.collect { case (_,_,newWord,name) if !newWord => "\n  " + name }
+    println(s"Included new ${newWords.length} words as bunch names out of ${lists.length} bunches")
+    println(s"New words: ${newWords.toList}")
+    println(s"Reused words: ${reusedWords.toList}")
+
+    // TODO: Fill bunches
+  }
+
   def readOldWordsFromDatabase: Iterable[OldWord] = {
     val oldWords = ArrayBuffer[OldWord]()
 
@@ -345,6 +379,40 @@ object Main {
     }
 
     oldWords.toArray[OldWord]
+  }
+
+  def readOldListsFromDatabase: Map[Int,String] = {
+    val oldLists = scala.collection.mutable.Map[Int,String]()
+
+    val outStream = new PrintWriter(new FileOutputStream("ListRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM ListRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val id = resultSet.getInt("id")
+          val name = resultSet.getString("name")
+          val rowValues = s"$id,$name"
+          oldLists(id) = name
+
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    oldLists.toMap
   }
 
   def exportOnBitStream(bufferSet: BufferSet) = {
@@ -406,8 +474,8 @@ object Main {
   def main(args: Array[String]): Unit = {
     implicit val bufferSet = initialiseDatabase()
 
-    val oldWords = readOldWordsFromDatabase
-    convertCollections(oldWords)
+    convertWords(readOldWordsFromDatabase)
+    convertBunches(readOldListsFromDatabase)
 
     exportOnBitStream(bufferSet)
 

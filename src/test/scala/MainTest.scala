@@ -11,7 +11,7 @@ class MainTest extends FlatSpec with Matchers {
     val esArray = "casa"
 
     val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
     kanjiIndex should be >= 0
@@ -52,7 +52,7 @@ class MainTest extends FlatSpec with Matchers {
     val esArray = esArrays.mkString(", ")
 
     val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
     kanjiIndex should be >= 0
@@ -122,7 +122,7 @@ class MainTest extends FlatSpec with Matchers {
     val esArray = esArray1 + "; " + esArray2 + ", " + esArray3
 
     val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
     kanjiIndex should be >= 0
@@ -206,7 +206,7 @@ class MainTest extends FlatSpec with Matchers {
       Main.OldWord(kanjiArray1, kanaArray1, esArray),
       Main.OldWord(kanjiArray2, kanaArray2, esArray)
     )
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
     kanjiIndex1 should be >= 0
@@ -268,7 +268,7 @@ class MainTest extends FlatSpec with Matchers {
       Main.OldWord(kanjiArray1, kanaArray, esArray1),
       Main.OldWord(kanjiArray2, kanaArray, esArray2)
     )
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
     kanjiIndex1 should be >= 0
@@ -341,7 +341,7 @@ class MainTest extends FlatSpec with Matchers {
       Main.OldWord(kanjiArray2, kanaArray, esArray2),
       Main.OldWord(kanjiArray3, kanaArray, esArray3)
     )
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
     kanjiIndex1 should be >= 0
@@ -437,7 +437,7 @@ class MainTest extends FlatSpec with Matchers {
       Main.OldWord(kanjiArray1, kanaArray, esArray1),
       Main.OldWord(kanjiArray2, kanaArray, esArray2)
     ))
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanjiIndex1 = bufferSet.symbolArrays.indexOf(kanjiArray1)
     kanjiIndex1 should be >= 0
@@ -538,7 +538,7 @@ class MainTest extends FlatSpec with Matchers {
     val esArray = "por esa razón"
 
     val oldWords = Iterable(Main.OldWord(kanaArray, kanaArray, esArray))
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
     kanaIndex should be >= 0
@@ -583,7 +583,7 @@ class MainTest extends FlatSpec with Matchers {
       Main.OldWord(kanaArray, kanaArray, esArray1),
       Main.OldWord(kanjiArray2, kanaArray, esArray2)
     )
-    Main.convertCollections(oldWords)
+    Main.convertWords(oldWords)
 
     val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
     kanaIndex should be >= 0
