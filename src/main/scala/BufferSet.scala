@@ -42,4 +42,23 @@ class BufferSet {
       size
     }
   }
+
+  def fullCharSet = {
+    val r = symbolArrays.mkString("").foldLeft(scala.collection.mutable.Map[Char, Int]()) {
+      (map, char) =>
+        map(char) = map.getOrElse(char, 0) + 1
+        map
+    }
+
+    r.toArray.sortWith((a,b) => a._2 > b._2).map(_._1)
+  }
+
+  def maxWordAndConceptIndexes: (Int, Int) = {
+    acceptations.foldLeft((-1, -1)) {
+      case ((word, concept), acc) =>
+        val maxWord = if (acc.word > word) acc.word else word
+        val maxConcept = if (acc.concept > concept) acc.concept else concept
+        (maxWord, maxConcept)
+    }
+  }
 }
