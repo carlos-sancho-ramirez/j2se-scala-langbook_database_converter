@@ -157,7 +157,15 @@ object Main {
     result
   }
 
-  case class OldWord(kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
+  case class OldWord(wordId: Int, kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
+
+  /**
+    * Register representation for list-child relationship in old databases
+    * @param listId Identifier for the list
+    * @param childId Identifier for the word, list, grammar constraint, grammar rule or quiz.
+    * @param childType Determines the children type (word = 0)
+    */
+  case class ListChildRegister(listId: Int, childId: Int, childType: Int)
 
   /**
     * Take meaning field from old database base and parses it for semicolon and commas to get all
@@ -200,7 +208,9 @@ object Main {
   /**
     * Convert from old database schema to the new database schema
     */
-  def convertWords(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet) = {
+  def convertWords(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
+    val oldNewMap = scala.collection.mutable.Map[Int, Int]()
+
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
@@ -245,6 +255,8 @@ object Main {
         bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanaAlphabet, kanaSymbolArrayIndex))
         jaWord
       }
+
+      oldNewMap(oldWord.wordId) = jaWord
 
       val thisAccIndexes: Array[Int] = for (knownConcept <- knownConcepts) yield {
         val concept = {
@@ -304,9 +316,11 @@ object Main {
         }
       }
     }
+
+    oldNewMap.toMap
   }
 
-  def convertBunches(oldLists: Map[Int, String])(implicit bufferSet: BufferSet): Unit = {
+  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldNewWordIdMap: Map[Int, Int])(implicit bufferSet: BufferSet): Unit = {
     val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
 
     for ((listId, name) <- oldLists) {
@@ -331,13 +345,43 @@ object Main {
       }
     }
 
-    val newWords = lists.collect { case (_,_,newWord,name) if newWord => "\n  " + name }
-    val reusedWords = lists.collect { case (_,_,newWord,name) if !newWord => "\n  " + name }
-    println(s"Included new ${newWords.length} words as bunch names out of ${lists.length} bunches")
-    println(s"New words: ${newWords.toList}")
-    println(s"Reused words: ${reusedWords.toList}")
+    // This is here just for testing purposes and should be removed
+    do {
+      val newWords = lists.collect { case (_, _, newWord, name) if newWord => "\n  " + name }
+      val reusedWords = lists.collect { case (_, _, newWord, name) if !newWord => "\n  " + name }
+      println(s"Included new ${newWords.length} words as bunch names out of ${lists.length} bunches")
+      println(s"New words: ${newWords.toList}")
+      println(s"Reused words: ${reusedWords.toList}")
+    } while (false)
 
-    // TODO: Fill bunches
+    for (listChildRegister <- listChildRegisters if listChildRegister.childType == 0) {
+      val jaWord = oldNewWordIdMap(listChildRegister.childId)
+      val listConcept = lists.collectFirst {
+        case (concept, listId, _, _) if listId == listChildRegister.listId => concept
+      }.get
+
+      bufferSet.bunchWords += BunchWord(listConcept, jaWord)
+    }
+
+    // This is here just for testing purposes and should be removed
+    do {
+      val transitiveVerbSymbolArray = bufferSet.symbolArrays.indexOf("verbo transitivo")
+      val transitiveVerbWord = bufferSet.wordRepresentations.collectFirst {
+        case repr if repr.symbolArray == transitiveVerbSymbolArray => repr.word
+      }.get
+      val transitiveVerbConcept = bufferSet.acceptations.collectFirst {
+        case acc if acc.word == transitiveVerbWord => acc.concept
+      }.get
+      val r = bufferSet.bunchWords.collect {
+        case bunchWord if bunchWord.bunchConcept == transitiveVerbConcept => bunchWord.word
+      }
+
+      val wordsInList = r.map(wordId => bufferSet.wordRepresentations.collectFirst {
+        case repr if repr.alphabet == kanaAlphabet && repr.word == wordId => bufferSet.symbolArrays(repr.symbolArray)
+      }.get).toList
+
+      println(s"Encontradas ${r.length} palabras en la lista 'verbo transitivo': $wordsInList")
+    } while(false)
   }
 
   def readOldWordsFromDatabase: Iterable[OldWord] = {
@@ -354,17 +398,18 @@ object Main {
         val resultSet = statement.executeQuery("SELECT * FROM WordRegister")
         var limit = 10000
         while (limit > 0 && resultSet.next()) {
+          val wordId = resultSet.getInt("id")
           val kanjiSymbolArray = resultSet.getString("mWrittenWord")
           val kanaSymbolArray = resultSet.getString("mPronunciation")
           val spSymbolArray = resultSet.getString("meaning")
           val rowValues = List(
-            resultSet.getInt("id"),
+            wordId,
             kanjiSymbolArray,
             kanaSymbolArray,
             spSymbolArray
           )
 
-          oldWords += OldWord(kanjiSymbolArray, kanaSymbolArray, spSymbolArray)
+          oldWords += OldWord(wordId, kanjiSymbolArray, kanaSymbolArray, spSymbolArray)
 
           outStream.println(rowValues.mkString(","))
           limit -= 1
@@ -413,6 +458,41 @@ object Main {
     }
 
     oldLists.toMap
+  }
+
+  def readOldListChildrenFromDatabase: Iterable[ListChildRegister] = {
+    val listChildren = ArrayBuffer[ListChildRegister]()
+
+    val outStream = new PrintWriter(new FileOutputStream("ListChildRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM ListChildRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val listId = resultSet.getInt("listId")
+          val childId = resultSet.getInt("childId")
+          val childType = resultSet.getInt("childRegisterIndex")
+          val rowValues = s"$listId,$childId,$childType"
+          listChildren += ListChildRegister(listId, childId, childType)
+
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    listChildren
   }
 
   def exportOnBitStream(bufferSet: BufferSet) = {
@@ -474,8 +554,9 @@ object Main {
   def main(args: Array[String]): Unit = {
     implicit val bufferSet = initialiseDatabase()
 
-    convertWords(readOldWordsFromDatabase)
-    convertBunches(readOldListsFromDatabase)
+    val oldNewWordIdMap = convertWords(readOldWordsFromDatabase)
+    val listChildRegisters = readOldListChildrenFromDatabase
+    convertBunches(readOldListsFromDatabase, listChildRegisters, oldNewWordIdMap)
 
     exportOnBitStream(bufferSet)
 

@@ -10,7 +10,7 @@ class MainTest extends FlatSpec with Matchers {
     val kanaArray = "いえ"
     val esArray = "casa"
 
-    val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
+    val oldWords = Iterable(Main.OldWord(1, kanjiArray, kanaArray, esArray))
     Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
@@ -51,7 +51,7 @@ class MainTest extends FlatSpec with Matchers {
     val kanaArray = "うける"
     val esArray = esArrays.mkString(", ")
 
-    val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
+    val oldWords = Iterable(Main.OldWord(1, kanjiArray, kanaArray, esArray))
     Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
@@ -121,7 +121,7 @@ class MainTest extends FlatSpec with Matchers {
     val kanaArray = "かし"
     val esArray = esArray1 + "; " + esArray2 + ", " + esArray3
 
-    val oldWords = Iterable(Main.OldWord(kanjiArray, kanaArray, esArray))
+    val oldWords = Iterable(Main.OldWord(1, kanjiArray, kanaArray, esArray))
     Main.convertWords(oldWords)
 
     val kanjiIndex = bufferSet.symbolArrays.indexOf(kanjiArray)
@@ -203,8 +203,8 @@ class MainTest extends FlatSpec with Matchers {
     val esArray = "importante"
 
     val oldWords = Iterable(
-      Main.OldWord(kanjiArray1, kanaArray1, esArray),
-      Main.OldWord(kanjiArray2, kanaArray2, esArray)
+      Main.OldWord(1, kanjiArray1, kanaArray1, esArray),
+      Main.OldWord(2, kanjiArray2, kanaArray2, esArray)
     )
     Main.convertWords(oldWords)
 
@@ -265,8 +265,8 @@ class MainTest extends FlatSpec with Matchers {
     val esArray2 = "rápido"
 
     val oldWords = Iterable(
-      Main.OldWord(kanjiArray1, kanaArray, esArray1),
-      Main.OldWord(kanjiArray2, kanaArray, esArray2)
+      Main.OldWord(1, kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(2, kanjiArray2, kanaArray, esArray2)
     )
     Main.convertWords(oldWords)
 
@@ -337,9 +337,9 @@ class MainTest extends FlatSpec with Matchers {
     val esArray3 = "dios"
 
     val oldWords = Iterable(
-      Main.OldWord(kanjiArray1, kanaArray, esArray1),
-      Main.OldWord(kanjiArray2, kanaArray, esArray2),
-      Main.OldWord(kanjiArray3, kanaArray, esArray3)
+      Main.OldWord(1, kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(2, kanjiArray2, kanaArray, esArray2),
+      Main.OldWord(3, kanjiArray3, kanaArray, esArray3)
     )
     Main.convertWords(oldWords)
 
@@ -434,8 +434,8 @@ class MainTest extends FlatSpec with Matchers {
     val esArray2 = esArrays2.map(_.mkString(", ")).mkString("; ")
 
     val oldWords = shifter(Iterable(
-      Main.OldWord(kanjiArray1, kanaArray, esArray1),
-      Main.OldWord(kanjiArray2, kanaArray, esArray2)
+      Main.OldWord(1, kanjiArray1, kanaArray, esArray1),
+      Main.OldWord(2, kanjiArray2, kanaArray, esArray2)
     ))
     Main.convertWords(oldWords)
 
@@ -537,7 +537,7 @@ class MainTest extends FlatSpec with Matchers {
     val kanaArray = "だから"
     val esArray = "por esa razón"
 
-    val oldWords = Iterable(Main.OldWord(kanaArray, kanaArray, esArray))
+    val oldWords = Iterable(Main.OldWord(1, kanaArray, kanaArray, esArray))
     Main.convertWords(oldWords)
 
     val kanaIndex = bufferSet.symbolArrays.indexOf(kanaArray)
@@ -580,8 +580,8 @@ class MainTest extends FlatSpec with Matchers {
     val esArray2 = esArrays2.mkString(", ")
 
     val oldWords = Iterable(
-      Main.OldWord(kanaArray, kanaArray, esArray1),
-      Main.OldWord(kanjiArray2, kanaArray, esArray2)
+      Main.OldWord(1, kanaArray, kanaArray, esArray1),
+      Main.OldWord(2, kanjiArray2, kanaArray, esArray2)
     )
     Main.convertWords(oldWords)
 

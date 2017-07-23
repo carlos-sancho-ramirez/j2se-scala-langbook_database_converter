@@ -3,6 +3,7 @@ import scala.collection.mutable.ArrayBuffer
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
 case class AccRepresentation(acc: Int, symbolArray: Int) // There is no alphabet because so far it is always "kanji"
+case class BunchWord(bunchConcept: Int, word: Int)
 
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
@@ -16,6 +17,7 @@ class BufferSet {
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
   val accRepresentations = ArrayBuffer[AccRepresentation]()
+  val bunchWords = ArrayBuffer[BunchWord]()
 
   /**
     * Checks if the given symbol array already exist in the list.
