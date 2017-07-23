@@ -18,6 +18,7 @@ class BufferSet {
   val symbolArrays = ArrayBuffer[String]()
   val accRepresentations = ArrayBuffer[AccRepresentation]()
   val bunchWords = ArrayBuffer[BunchWord]()
+  val conversions = scala.collection.mutable.Set[Conversion]()
 
   /**
     * Checks if the given symbol array already exist in the list.

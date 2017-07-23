@@ -16,12 +16,13 @@ object Main {
   var conceptCount = 0
 
   val minValidAlphabet = 0
-  val maxValidAlphabet = 3
+  val maxValidAlphabet = 4
 
   val enAlphabet = conceptCount
   val esAlphabet = conceptCount + 1
   val kanjiAlphabet = conceptCount + 2
   val kanaAlphabet = conceptCount + 3
+  val roumajiAlphabet = conceptCount + 4
 
   val alphabets: Vector[Int] = {
     val i = conceptCount
@@ -29,7 +30,8 @@ object Main {
       i, // English
       i + 1, // Spanish
       i + 2, // Japanese kanji
-      i + 3 // Japanese kana
+      i + 3, // Japanese kana
+      i + 4, // Japanese roumaji
     )
 
     conceptCount += r.size
@@ -124,6 +126,123 @@ object Main {
     concept
   }
 
+  val hiragana2RoumajiConversionPairs = List(
+    "あ" -> "a",
+    "い" -> "i",
+    "う" -> "u",
+    "え" -> "e",
+    "お" -> "o",
+    "きゃ" -> "kya",
+    "きゅ" -> "kyu",
+    "きょ" -> "kyo",
+    "ぎゃ" -> "gya",
+    "ぎゅ" -> "gyu",
+    "ぎょ" -> "gyo",
+    "か" -> "ka",
+    "っか" -> "kka",
+    "き" -> "ki",
+    "っき" -> "kki",
+    "く" -> "ku",
+    "っく" -> "kku",
+    "け" -> "ke",
+    "っけ" -> "kke",
+    "こ" -> "ko",
+    "っこ" -> "kko",
+    "が" -> "ga",
+    "ぎ" -> "gi",
+    "ぐ" -> "gu",
+    "げ" -> "ge",
+    "ご" -> "go",
+    "しゃ" -> "sha",
+    "しゅ" -> "shu",
+    "しょ" -> "sho",
+    "じゃ" -> "ja",
+    "じゅ" -> "ju",
+    "じょ" -> "jo",
+    "さ" -> "sa",
+    "し" -> "shi",
+    "す" -> "su",
+    "せ" -> "se",
+    "そ" -> "so",
+    "ざ" -> "za",
+    "じ" -> "ji",
+    "ず" -> "zu",
+    "ぜ" -> "ze",
+    "ぞ" -> "zo",
+    "ちゃ" -> "cha",
+    "ちゅ" -> "chu",
+    "ちょ" -> "cho",
+    "た" -> "ta",
+    "った" -> "tta",
+    "ち" -> "chi",
+    "つ" -> "tsu",
+    "て" -> "te",
+    "って" -> "tte",
+    "と" -> "to",
+    "っと" -> "tto",
+    "だ" -> "da",
+    "ぢ" -> "di",
+    "づ" -> "du",
+    "で" -> "de",
+    "ど" -> "do",
+    "にゃ" -> "nya",
+    "にゅ" -> "nyu",
+    "にょ" -> "nyo",
+    "な" -> "na",
+    "に" -> "ni",
+    "ぬ" -> "nu",
+    "ね" -> "ne",
+    "の" -> "no",
+    "ひゃ" -> "hya",
+    "ひゅ" -> "hyu",
+    "ひょ" -> "hyo",
+    "びゃ" -> "bya",
+    "びゅ" -> "byu",
+    "びょ" -> "byo",
+    "ぴゃ" -> "pya",
+    "ぴゅ" -> "pyu",
+    "ぴょ" -> "pyo",
+    "は" -> "ha",
+    "ひ" -> "hi",
+    "ふ" -> "fu",
+    "へ" -> "he",
+    "ほ" -> "ho",
+    "ば" -> "ba",
+    "び" -> "bi",
+    "ぶ" -> "bu",
+    "べ" -> "be",
+    "ぼ" -> "bo",
+    "ぱ" -> "pa",
+    "っぱ" -> "ppa",
+    "ぴ" -> "pi",
+    "っぴ" -> "ppi",
+    "ぷ" -> "pu",
+    "っぷ" -> "ppu",
+    "ぺ" -> "pe",
+    "っぺ" -> "ppe",
+    "ぽ" -> "po",
+    "っぽ" -> "ppo",
+    "ま" -> "ma",
+    "み" -> "mi",
+    "む" -> "mu",
+    "め" -> "me",
+    "も" -> "mo",
+    "や" -> "ya",
+    "ゆ" -> "yu",
+    "よ" -> "yo",
+    "りゃ" -> "rya",
+    "りゅ" -> "ryu",
+    "りょ" -> "ryo",
+    "ら" -> "ra",
+    "り" -> "ri",
+    "る" -> "ru",
+    "れ" -> "re",
+    "ろ" -> "ro",
+    "わ" -> "wa",
+    "を" -> "wo",
+    "ん" -> "n"
+  )
+
   def initialiseDatabase(): BufferSet = {
     implicit val bufferSet = new BufferSet()
     registerWord("Language", "Idioma", "言語", "げんご")
@@ -132,6 +251,14 @@ object Main {
     registerWord(jaLanguage, "Japanese", "Japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
+
+    // Add conversions
+    val conversionPairs = for ((kanaText, roumajiText) <- hiragana2RoumajiConversionPairs) yield {
+      val kana = bufferSet.addSymbolArray(kanaText)
+      val roumaji = bufferSet.addSymbolArray(roumajiText)
+      (kana, roumaji)
+    }
+    bufferSet.conversions += Conversion(kanaAlphabet, roumajiAlphabet, conversionPairs)
 
     bufferSet
   }
