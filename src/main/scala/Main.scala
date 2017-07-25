@@ -12,11 +12,7 @@ object Main {
     new File(resource.toURI).getPath
   }
 
-  val minValidConcept = 0
   var conceptCount = 0
-
-  val minValidAlphabet = 0
-  val maxValidAlphabet = 4
 
   val enAlphabet = conceptCount
   val esAlphabet = conceptCount + 1
@@ -63,7 +59,6 @@ object Main {
   val esWords = scala.collection.mutable.BitSet()
   val jaWords = scala.collection.mutable.BitSet()
 
-  val minValidWord = 0
   var wordCount = 0
 
   /**
@@ -622,65 +617,6 @@ object Main {
     listChildren
   }
 
-  def exportOnBitStream(bufferSet: BufferSet) = {
-
-    val obs = new OutputBitStream(new FileOutputStream("export.sdb"))
-
-    // Include charSet Huffman table
-    val huffmanTable = HuffmanTable.withFrequencies[Char](
-      scala.collection.JavaConverters.mapAsJavaMap(
-        bufferSet.charCountMap.mapValues(Integer.valueOf)))
-    obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
-
-    // Include all symbol arrays
-    val symbolArraysLength = bufferSet.symbolArrays.length
-    println(s"Exporting all strings ($symbolArraysLength in total)")
-    obs.writeNaturalNumber(symbolArraysLength)
-    for (array <- bufferSet.symbolArrays) {
-      obs.writeNaturalNumber(array.length)
-      for (ch <- array) {
-        obs.writeHuffmanSymbol(huffmanTable, ch)
-      }
-    }
-
-    // Export the amount of words and concepts in order to range integers
-    val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
-    obs.writeNaturalNumber(maxWord)
-    obs.writeNaturalNumber(maxConcept)
-
-    // Export acceptations
-    val acceptationsLength = bufferSet.acceptations.length
-    println(s"Exporting acceptations ($acceptationsLength in total)")
-    obs.writeNaturalNumber(acceptationsLength)
-    for (acc <- bufferSet.acceptations) {
-      obs.writeRangedNumber(minValidWord, maxWord, acc.word)
-      obs.writeRangedNumber(minValidWord, maxConcept, acc.concept)
-    }
-
-    // Export word representations
-    val wordRepresentationLength = bufferSet.wordRepresentations.length
-    println(s"Exporting word representations ($wordRepresentationLength in total)")
-    obs.writeNaturalNumber(wordRepresentationLength)
-    for (repr <- bufferSet.wordRepresentations) {
-      if (repr.word >= minValidWord && repr.alphabet >= minValidAlphabet && repr.symbolArray >= 0) {
-        obs.writeRangedNumber(minValidWord, maxWord, repr.word)
-        obs.writeRangedNumber(minValidAlphabet, maxValidAlphabet, repr.alphabet)
-        obs.writeRangedNumber(0, symbolArraysLength - 1, repr.symbolArray)
-      }
-    }
-
-    // Export word representations
-    val accRepresentationLength = bufferSet.accRepresentations.length
-    println(s"Exporting acceptation representations ($accRepresentationLength in total)")
-    obs.writeNaturalNumber(accRepresentationLength)
-    for (repr <- bufferSet.accRepresentations) {
-      obs.writeRangedNumber(0, acceptationsLength - 1, repr.acc)
-      obs.writeRangedNumber(0, symbolArraysLength - 1, repr.symbolArray)
-    }
-
-    obs.close()
-  }
-
   def main(args: Array[String]): Unit = {
     implicit val bufferSet = initialiseDatabase()
 
@@ -688,7 +624,14 @@ object Main {
     val listChildRegisters = readOldListChildrenFromDatabase
     convertBunches(readOldListsFromDatabase, listChildRegisters, oldNewWordIdMap)
 
-    exportOnBitStream(bufferSet)
+    val fileName = "export.sdb"
+    val obs = new OutputBitStream(new FileOutputStream(fileName))
+    try {
+      StreamedDatabaseWriter.write(bufferSet, obs)
+    }
+    catch {
+      case _: IOException => System.err.println(s"Unable to write $fileName")
+    }
 
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
