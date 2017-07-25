@@ -2,7 +2,7 @@ import java.io._
 import java.sql.DriverManager
 
 import scala.collection.mutable.ArrayBuffer
-import sword.bitstream.OutputBitStream
+import sword.bitstream.{HuffmanTable, OutputBitStream}
 
 object Main {
 
@@ -626,18 +626,21 @@ object Main {
 
     val obs = new OutputBitStream(new FileOutputStream("export.sdb"))
 
-    // Include full charSet
-    val charSet = bufferSet.fullCharSet
-    val str = charSet.mkString("")
-    println(s"Exporting a char set with ${charSet.length} chars")
-    obs.writeString(str)
+    // Include charSet Huffman table
+    val huffmanTable = HuffmanTable.withFrequencies[Char](
+      scala.collection.JavaConverters.mapAsJavaMap(
+        bufferSet.charCountMap.mapValues(Integer.valueOf)))
+    obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
 
     // Include all symbol arrays
     val symbolArraysLength = bufferSet.symbolArrays.length
     println(s"Exporting all strings ($symbolArraysLength in total)")
     obs.writeNaturalNumber(symbolArraysLength)
     for (array <- bufferSet.symbolArrays) {
-      obs.writeString(charSet, array)
+      obs.writeNaturalNumber(array.length)
+      for (ch <- array) {
+        obs.writeHuffmanSymbol(huffmanTable, ch)
+      }
     }
 
     // Export the amount of words and concepts in order to range integers
