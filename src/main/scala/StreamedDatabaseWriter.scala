@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, OutputBitStream}
+import sword.bitstream.{DefinedHuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -21,12 +21,22 @@ object StreamedDatabaseWriter {
         charCountMap.mapValues(Integer.valueOf)))
     obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
 
+    // Include suitable bit alignment for symbolArray lengths Huffman table
+    val symbolArrayLengthFreqMap = symbolArrays.foldLeft(new java.util.HashMap[Int, java.lang.Integer]()) { case (map, array) =>
+      val arrayLength = array.length
+      val newValue = if (map.containsKey(arrayLength)) map.get(arrayLength) + 1 else 1
+      map.put(arrayLength, newValue)
+      map
+    }
+    val symbolArrayLengthHuffmanTable = DefinedHuffmanTable.withFrequencies(symbolArrayLengthFreqMap)
+    obs.writeHuffmanTable[Int](symbolArrayLengthHuffmanTable, length => obs.writeNaturalNumber(length))
+
     // Include all symbol arrays
     val symbolArraysLength = symbolArrays.length
     println(s"Exporting all strings ($symbolArraysLength in total)")
     obs.writeNaturalNumber(symbolArraysLength)
     for (array <- symbolArrays) {
-      obs.writeNaturalNumber(array.length)
+      obs.writeHuffmanSymbol(symbolArrayLengthHuffmanTable, array.length)
       for (ch <- array) {
         obs.writeHuffmanSymbol(huffmanTable, ch)
       }
