@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidWord}
-import sword.bitstream.{HuffmanTable, OutputBitStream}
+import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, OutputBitStream}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -16,7 +16,7 @@ object StreamedDatabaseWriter {
     }.toMap
 
     // Include charSet Huffman table
-    val huffmanTable = HuffmanTable.withFrequencies[Char](
+    val huffmanTable = DefinedHuffmanTable.withFrequencies(
       scala.collection.JavaConverters.mapAsJavaMap(
         charCountMap.mapValues(Integer.valueOf)))
     obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
