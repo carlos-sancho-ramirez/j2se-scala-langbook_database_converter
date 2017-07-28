@@ -1,7 +1,5 @@
-import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
-
-import scala.collection.mutable.ArrayBuffer
+import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
+import sword.bitstream.{DefinedHuffmanTable, OutputBitStream}
 
 object StreamedDatabaseWriter {
 
@@ -43,13 +41,13 @@ object StreamedDatabaseWriter {
     }
   }
 
-  def write(bufferSet: BufferSet, obs: OutputBitStream) = {
+  def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
     writeSymbolArrays(bufferSet.symbolArrays, obs)
 
     // Export the amount of words and concepts in order to range integers
     val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
-    obs.writeNaturalNumber(maxWord)
-    obs.writeNaturalNumber(maxConcept)
+    obs.writeNaturalNumber(maxWord + 1)
+    obs.writeNaturalNumber(maxConcept + 1)
 
     // Export acceptations
     val acceptationsLength = bufferSet.acceptations.length
@@ -57,12 +55,18 @@ object StreamedDatabaseWriter {
     obs.writeNaturalNumber(acceptationsLength)
     for (acc <- bufferSet.acceptations) {
       obs.writeRangedNumber(minValidWord, maxWord, acc.word)
-      obs.writeRangedNumber(minValidWord, maxConcept, acc.concept)
+      obs.writeRangedNumber(minValidConcept, maxConcept, acc.concept)
     }
 
     // Export word representations
     val symbolArraysLength = bufferSet.symbolArrays.length
-    val wordRepresentationLength = bufferSet.wordRepresentations.length
+    var wordRepresentationLength = 0
+    for (repr <- bufferSet.wordRepresentations) {
+      if (repr.word >= minValidWord && repr.alphabet >= minValidAlphabet && repr.symbolArray >= 0) {
+        wordRepresentationLength += 1
+      }
+    }
+
     println(s"Exporting word representations ($wordRepresentationLength in total)")
     obs.writeNaturalNumber(wordRepresentationLength)
     for (repr <- bufferSet.wordRepresentations) {
