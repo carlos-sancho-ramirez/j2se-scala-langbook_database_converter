@@ -3,6 +3,8 @@ import java.io._
 import scala.collection.mutable.ArrayBuffer
 import sword.bitstream.OutputBitStream
 
+import scala.collection.mutable
+
 object Main {
 
   var conceptCount = 0
@@ -315,6 +317,7 @@ object Main {
     */
   def convertWords(oldWords: Iterable[OldWord], oldWordPronunciations: Map[Int /* old word id */, IndexedSeq[OldPronunciation]])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
     val oldNewMap = scala.collection.mutable.Map[Int, Int]()
+    val oldWordAccMap = scala.collection.mutable.Map[Int /* old word id */, Set[Int] /* Accs */]()
 
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
@@ -363,6 +366,7 @@ object Main {
 
       oldNewMap(oldWord.wordId) = jaWord
 
+      val accArray = ArrayBuffer[Int]()
       val thisAccIndexes: Array[Int] = for (knownConcept <- knownConcepts) yield {
         val concept = {
           if (knownConcept >= 0) {
@@ -375,9 +379,12 @@ object Main {
           }
         }
 
+        val accIndex = bufferSet.acceptations.length
         bufferSet.acceptations += Acceptation(jaWord, concept)
-        bufferSet.acceptations.length - 1
+        accArray += accIndex
+        accIndex
       }
+      oldWordAccMap(oldWord.wordId) = accArray.toSet
 
       if (knownJaWord.isEmpty /* New word */) {
         if (kanjiSymbolArrayIndex != kanaSymbolArrayIndex) {
@@ -419,6 +426,27 @@ object Main {
             bufferSet.acceptations += Acceptation(esWord, concept)
           }
         }
+      }
+    }
+
+    // Include correlations
+    for ((oldWordId, seq) <- oldWordPronunciations) {
+      val wordId = oldNewMap(oldWordId)
+      val newSeq = mutable.ArrayBuffer[Int /* conversion index */]()
+      for (pronunciation <- seq) {
+        val kanjiArray = bufferSet.addSymbolArray(pronunciation.kanji)
+        val kanaArray = bufferSet.addSymbolArray(pronunciation.kana)
+        val prevIndex = bufferSet.kanjiKanaCorrelations.indexWhere(c => c._1 == kanjiArray && c._2 == kanaArray)
+        val conversionIndex = if (prevIndex >= 0) prevIndex else {
+          val newIndex = bufferSet.kanjiKanaCorrelations.length
+          bufferSet.kanjiKanaCorrelations += ((kanjiArray, kanaArray))
+          newIndex
+        }
+
+        newSeq += conversionIndex
+      }
+      for (accIndex <- oldWordAccMap(oldWordId)) {
+        bufferSet.jaWordCorrelations(accIndex) = newSeq.toArray
       }
     }
 
