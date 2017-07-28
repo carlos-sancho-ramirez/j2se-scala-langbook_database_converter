@@ -313,7 +313,7 @@ object Main {
   /**
     * Convert from old database schema to the new database schema
     */
-  def convertWords(oldWords: Iterable[OldWord])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
+  def convertWords(oldWords: Iterable[OldWord], oldWordPronunciations: Map[Int /* old word id */, IndexedSeq[OldPronunciation]])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
     val oldNewMap = scala.collection.mutable.Map[Int, Int]()
 
     for (oldWord <- oldWords) {
@@ -499,9 +499,15 @@ object Main {
     }
 
     val sqliteDatabaseReader = new SQLiteDatabaseReader(filePath)
-    val oldNewWordIdMap = convertWords(sqliteDatabaseReader.readOldWords)
-    val listChildRegisters = sqliteDatabaseReader.readOldListChildren
-    convertBunches(sqliteDatabaseReader.readOldLists, listChildRegisters, oldNewWordIdMap)
+    val oldNewWordIdMap = convertWords(
+      sqliteDatabaseReader.readOldWords,
+      sqliteDatabaseReader.readOldWordPronunciations
+    )
+    convertBunches(
+      sqliteDatabaseReader.readOldLists,
+      sqliteDatabaseReader.readOldListChildren,
+      oldNewWordIdMap
+    )
 
     val fileName = "export.sdb"
     val obs = new OutputBitStream(new FileOutputStream(fileName))

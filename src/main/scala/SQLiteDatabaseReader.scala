@@ -13,6 +13,8 @@ case class OldWord(wordId: Int, kanjiSymbolArray: String, kanaSymbolArray: Strin
   */
 case class ListChildRegister(listId: Int, childId: Int, childType: Int)
 
+case class OldPronunciation(kanji: String, kana: String)
+
 class SQLiteDatabaseReader(val filePath: String) {
 
   def readOldWords: Iterable[OldWord] = {
@@ -124,5 +126,92 @@ class SQLiteDatabaseReader(val filePath: String) {
     }
 
     listChildren
+  }
+
+  def readOldPronunciations: Map[Int, OldPronunciation] = {
+    val pronunciations = scala.collection.mutable.Map[Int, OldPronunciation]()
+
+    val outStream = new PrintWriter(new FileOutputStream("PronunciationRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM PronunciationRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val id = resultSet.getInt("id")
+          val kanji = resultSet.getString("written")
+          val kana = resultSet.getString("kana")
+          val rowValues = s"$id,$kanji,$kana"
+          pronunciations(id) = OldPronunciation(kanji, kana)
+
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    pronunciations.toMap
+  }
+
+  def readOldWordPronunciations: Map[Int /* Old word id */, IndexedSeq[OldPronunciation]] = {
+    val pronunciations = readOldPronunciations
+    val wordPronunciations = scala.collection.mutable.Map[Int /* word id */, IndexedSeq[OldPronunciation]]()
+
+    val outStream = new PrintWriter(new FileOutputStream("WordPronunciationRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM WordPronunciationRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val id = resultSet.getInt("id")
+          val wordId = resultSet.getInt("wordId")
+          val pronunciationId = resultSet.getInt("pronunciationId")
+          val indexWithinWord = resultSet.getInt("indexWithinWord")
+
+          val pronunciation = pronunciations(pronunciationId)
+          if (indexWithinWord == 0) {
+            if (wordPronunciations.contains(wordId)) {
+              throw new AssertionError()
+            }
+            wordPronunciations(wordId) = IndexedSeq(pronunciation)
+          }
+          else {
+            val currentSeq = wordPronunciations(wordId)
+            if (indexWithinWord != currentSeq.size) {
+              throw new AssertionError()
+            }
+
+            wordPronunciations(wordId) = currentSeq :+ pronunciation
+          }
+
+          val rowValues = s"$id,$wordId,$pronunciationId,$indexWithinWord"
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    wordPronunciations.toMap
   }
 }
