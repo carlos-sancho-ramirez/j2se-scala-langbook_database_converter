@@ -86,6 +86,39 @@ object StreamedDatabaseWriter {
       obs.writeRangedNumber(0, symbolArraysLength - 1, repr.symbolArray)
     }
 
+    // Export kanji-kana correlations
+    val kanjiKanaCorrelationsLength = bufferSet.kanjiKanaCorrelations.length
+    obs.writeNaturalNumber(kanjiKanaCorrelationsLength)
+    for ((kanji, kana) <- bufferSet.kanjiKanaCorrelations) {
+      obs.writeRangedNumber(0, symbolArraysLength - 1, kanji)
+      obs.writeRangedNumber(0, symbolArraysLength - 1, kana)
+    }
+
+    // Export jaWordCorrelations
+    val jaWordCorrelationsLength = bufferSet.jaWordCorrelations.size
+    obs.writeNaturalNumber(jaWordCorrelationsLength)
+
+    if (jaWordCorrelationsLength > 0) {
+      val correlationLengthHuffmanTable = {
+        val lengths = new java.util.HashMap[Int, Integer]()
+        for ((_, corrArray) <- bufferSet.jaWordCorrelations) {
+          val key = corrArray.length
+          val value = if (lengths.containsKey(key)) lengths.get(key).intValue() else 0
+          lengths.put(key, value + 1)
+        }
+        DefinedHuffmanTable.withFrequencies(lengths)
+      }
+      obs.writeHuffmanTable[Int](correlationLengthHuffmanTable, symbol => obs.writeNaturalNumber(symbol))
+
+      for ((accIndex, corrArray) <- bufferSet.jaWordCorrelations) {
+        obs.writeRangedNumber(0, acceptationsLength - 1, accIndex)
+        obs.writeHuffmanSymbol(correlationLengthHuffmanTable, corrArray.length)
+        for (corr <- corrArray) {
+          obs.writeRangedNumber(0, kanjiKanaCorrelationsLength - 1, corr)
+        }
+      }
+    }
+
     obs.close()
   }
 }

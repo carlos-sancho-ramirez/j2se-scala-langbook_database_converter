@@ -27,7 +27,7 @@ class BufferSet {
   // So far Japanese is the only language using correlations, thus for now it is assumed that
   // source alphabet is always kanji and target alphabet is always kana
   // TODO: Make this for any language.
-  val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Array[Int /* Indexes within kanjiKanaCorrelations */]]()
+  val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
 
   /**
     * Checks if the given symbol array already exist in the list.

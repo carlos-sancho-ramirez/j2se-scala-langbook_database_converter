@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.InputBitStream
+import sword.bitstream.{DefinedHuffmanTable, InputBitStream}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -57,6 +57,29 @@ object StreamedDatabaseReader {
       val acc = ibs.readRangedNumber(0, acceptationsLength - 1)
       val symbolArray = ibs.readRangedNumber(0, symbolArraysLength - 1)
       bufferSet.accRepresentations += AccRepresentation(acc, symbolArray)
+    }
+
+    // Export kanji-kana correlations
+    val kanjiKanaCorrelationsLength = ibs.readNaturalNumber().toInt
+    for (i <- 0 until kanjiKanaCorrelationsLength) {
+      val kanji = ibs.readRangedNumber(0, symbolArraysLength - 1)
+      val kana = ibs.readRangedNumber(0, symbolArraysLength - 1)
+      bufferSet.kanjiKanaCorrelations += ((kanji, kana))
+    }
+
+    // Export jaWordCorrelations
+    val jaWordCorrelationsLength = ibs.readNaturalNumber().toInt
+    if (jaWordCorrelationsLength > 0) {
+      val correlationLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+
+      for (i <- 0 until jaWordCorrelationsLength) {
+        val accIndex = ibs.readRangedNumber(0, acceptationsLength - 1)
+        val corrArrayLength = ibs.readHuffmanSymbol(correlationLengthHuffmanTable)
+        val corrArray = for (j <- 0 until corrArrayLength) yield {
+          ibs.readRangedNumber(0, kanjiKanaCorrelationsLength - 1)
+        }
+        bufferSet.jaWordCorrelations(accIndex) = corrArray.toVector
+      }
     }
 
     ibs.close()

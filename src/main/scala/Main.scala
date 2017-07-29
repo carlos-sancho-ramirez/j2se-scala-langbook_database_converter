@@ -431,7 +431,6 @@ object Main {
 
     // Include correlations
     for ((oldWordId, seq) <- oldWordPronunciations) {
-      val wordId = oldNewMap(oldWordId)
       val newSeq = mutable.ArrayBuffer[Int /* conversion index */]()
       for (pronunciation <- seq) {
         val kanjiArray = bufferSet.addSymbolArray(pronunciation.kanji)
@@ -446,7 +445,7 @@ object Main {
         newSeq += conversionIndex
       }
       for (accIndex <- oldWordAccMap(oldWordId)) {
-        bufferSet.jaWordCorrelations(accIndex) = newSeq.toArray
+        bufferSet.jaWordCorrelations(accIndex) = newSeq.toVector
       }
     }
 
@@ -536,6 +535,12 @@ object Main {
       sqliteDatabaseReader.readOldListChildren,
       oldNewWordIdMap
     )
+
+    // Added temporal for debugging purposes
+    val kakuKanji = "書"
+    val kakuKanjiIndex = bufferSet.symbolArrays.indexOf(kakuKanji)
+    val kakuKanas = bufferSet.kanjiKanaCorrelations.collect { case conv if conv._1 == kakuKanjiIndex => bufferSet.symbolArrays(conv._2) }
+    println(s"For kanji $kakuKanji following pronunciations are found: $kakuKanas")
 
     val fileName = "export.sdb"
     val obs = new OutputBitStream(new FileOutputStream(fileName))
