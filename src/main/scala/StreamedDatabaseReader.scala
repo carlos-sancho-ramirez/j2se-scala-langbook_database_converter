@@ -82,6 +82,14 @@ object StreamedDatabaseReader {
       }
     }
 
+    // Export bunchWords
+    val bunchWordsLength = ibs.readNaturalNumber().toInt
+    for (i <- 0 until bunchWordsLength) {
+      val bunchConcept = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val word = ibs.readRangedNumber(minValidWord, maxWord)
+      bufferSet.bunchWords += BunchWord(bunchConcept, word)
+    }
+
     ibs.close()
   }
 }

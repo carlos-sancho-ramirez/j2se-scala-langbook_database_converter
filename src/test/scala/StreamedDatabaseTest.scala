@@ -31,7 +31,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     readSymbolArrays shouldBe symbolArrays
   }
 
-  private def checkAcceptationsAndItsRepresentations(sourceSet: BufferSet): Unit = {
+  private def checkWriteAndRead(sourceSet: BufferSet): Unit = {
     val baos = new ByteArrayOutputStream
     val obs = new OutputBitStream(baos)
 
@@ -51,6 +51,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     targetSet.accRepresentations shouldBe sourceSet.accRepresentations
     targetSet.kanjiKanaCorrelations shouldBe sourceSet.kanjiKanaCorrelations
     targetSet.jaWordCorrelations shouldBe sourceSet.jaWordCorrelations
+    targetSet.bunchWords shouldBe sourceSet.bunchWords
   }
 
   it should "match on write and read acceptations and its representations even if only include symbol arrays" in {
@@ -63,7 +64,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       "dios"
     )
 
-    checkAcceptationsAndItsRepresentations(sourceSet)
+    checkWriteAndRead(sourceSet)
   }
 
   it should "match on write and read acceptations and its representations" in {
@@ -114,7 +115,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       AccRepresentation(5, 7)
     )
 
-    checkAcceptationsAndItsRepresentations(sourceSet)
+    checkWriteAndRead(sourceSet)
   }
 
   it should "match on write and read acceptations, its representations and correlations" in {
@@ -190,6 +191,45 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       (5, Vector(6))
     )
 
-    checkAcceptationsAndItsRepresentations(sourceSet)
+    checkWriteAndRead(sourceSet)
+  }
+
+  it should "match on write and read bunches" in {
+    val sourceSet = new BufferSet()
+
+    val colorSymbolArray = sourceSet.addSymbolArray("color")
+    val redSymbolArray = sourceSet.addSymbolArray("red")
+    val greenSymbolArray = sourceSet.addSymbolArray("green")
+    val blueSymbolArray = sourceSet.addSymbolArray("blue")
+
+    val (lastWord, lastConcept) = sourceSet.maxWordAndConceptIndexes
+
+    val colorConcept = lastConcept + 1
+    val colorWord = lastWord + 1
+    val redWord = lastWord + 2
+    val greenWord = lastWord + 3
+    val blueWord = lastWord + 4
+
+    sourceSet.wordRepresentations ++= Vector(
+      WordRepresentation(colorWord, Main.enAlphabet, colorSymbolArray),
+      WordRepresentation(redWord, Main.enAlphabet, redSymbolArray),
+      WordRepresentation(greenWord, Main.enAlphabet, greenSymbolArray),
+      WordRepresentation(blueWord, Main.enAlphabet, blueSymbolArray)
+    )
+
+    sourceSet.acceptations ++= Vector(
+      Acceptation(colorWord, colorConcept),
+      Acceptation(redWord, lastConcept + 2),
+      Acceptation(greenWord, lastConcept + 3),
+      Acceptation(blueWord, lastConcept + 4)
+    )
+
+    sourceSet.bunchWords ++= Vector(
+      BunchWord(colorConcept, redWord),
+      BunchWord(colorConcept, greenWord),
+      BunchWord(colorConcept, blueWord)
+    )
+
+    checkWriteAndRead(sourceSet)
   }
 }

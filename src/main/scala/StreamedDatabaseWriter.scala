@@ -119,6 +119,14 @@ object StreamedDatabaseWriter {
       }
     }
 
+    // Export bunchWords
+    val bunchWordsLength = bufferSet.bunchWords.size
+    obs.writeNaturalNumber(bunchWordsLength)
+    for (bunchWord <- bufferSet.bunchWords) {
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunchWord.bunchConcept)
+      obs.writeRangedNumber(minValidWord, maxWord, bunchWord.word)
+    }
+
     obs.close()
   }
 }
