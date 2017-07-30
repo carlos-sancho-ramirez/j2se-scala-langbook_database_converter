@@ -70,15 +70,29 @@ object StreamedDatabaseReader {
     // Export jaWordCorrelations
     val jaWordCorrelationsLength = ibs.readNaturalNumber().toInt
     if (jaWordCorrelationsLength > 0) {
-      val correlationLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
 
       for (i <- 0 until jaWordCorrelationsLength) {
-        val accIndex = ibs.readRangedNumber(0, acceptationsLength - 1)
-        val corrArrayLength = ibs.readHuffmanSymbol(correlationLengthHuffmanTable)
-        val corrArray = for (j <- 0 until corrArrayLength) yield {
-          ibs.readRangedNumber(0, kanjiKanaCorrelationsLength - 1)
+        val wordId = ibs.readRangedNumber(minValidWord, maxWord)
+        val reprCount = ibs.readHuffmanSymbol(correlationReprCountHuffmanTable)
+
+        val reprs = for (j <- 0 until reprCount) yield {
+          val conceptSetLength = ibs.readHuffmanSymbol(correlationConceptCountHuffmanTable)
+          val concepts = for (k <- 0 until conceptSetLength) yield {
+            ibs.readRangedNumber(minValidConcept, maxConcept)
+          }
+
+          val vectorLength = ibs.readHuffmanSymbol(correlationVectorLengthHuffmanTable)
+          val vector = for (k <- 0 until vectorLength) yield {
+            ibs.readRangedNumber(0, kanjiKanaCorrelationsLength - 1)
+          }
+
+          (concepts.toSet, vector.toVector)
         }
-        bufferSet.jaWordCorrelations(accIndex) = corrArray.toVector
+
+        bufferSet.jaWordCorrelations(wordId) = reprs.toSet
       }
     }
 

@@ -99,22 +99,66 @@ object StreamedDatabaseWriter {
     obs.writeNaturalNumber(jaWordCorrelationsLength)
 
     if (jaWordCorrelationsLength > 0) {
-      val correlationLengthHuffmanTable = {
+      val (
+        correlationReprCountHuffmanTable,
+        correlationConceptCountHuffmanTable,
+        correlationVectorLengthHuffmanTable
+      ) = {
+        val reprCount = new java.util.HashMap[Int, Integer]()
         val lengths = new java.util.HashMap[Int, Integer]()
-        for ((_, corrArray) <- bufferSet.jaWordCorrelations) {
-          val key = corrArray.length
-          val value = if (lengths.containsKey(key)) lengths.get(key).intValue() else 0
-          lengths.put(key, value + 1)
-        }
-        DefinedHuffmanTable.withFrequencies(lengths)
-      }
-      obs.writeHuffmanTable[Int](correlationLengthHuffmanTable, symbol => obs.writeNaturalNumber(symbol))
+        val conceptCount = new java.util.HashMap[Int, Integer]()
 
-      for ((accIndex, corrArray) <- bufferSet.jaWordCorrelations) {
-        obs.writeRangedNumber(0, acceptationsLength - 1, accIndex)
-        obs.writeHuffmanSymbol(correlationLengthHuffmanTable, corrArray.length)
-        for (corr <- corrArray) {
-          obs.writeRangedNumber(0, kanjiKanaCorrelationsLength - 1, corr)
+        for ((_, set) <- bufferSet.jaWordCorrelations) {
+          val reprCountKey = set.size
+          if (reprCountKey == 0) {
+            throw new AssertionError("Not expected to find an empty set")
+          }
+
+          val reprCountValue = if (reprCount.containsKey(reprCountKey)) reprCount.get(reprCountKey).intValue() else 0
+          reprCount.put(reprCountKey, reprCountValue + 1)
+
+          for ((conceptSet, corrArray) <- set) {
+            val conceptCountKey = conceptSet.size
+            if (conceptCountKey == 0) {
+              throw new AssertionError("Not expected to find an empty set")
+            }
+            val conceptCountValue = if (conceptCount.containsKey(conceptCountKey)) conceptCount.get(conceptCountKey).intValue() else 0
+            conceptCount.put(conceptCountKey, conceptCountValue + 1)
+
+            val lengthKey = corrArray.length
+            if (lengthKey == 0) {
+              throw new AssertionError("Not expected to find an empty Vector")
+            }
+            val lengthValue = if (lengths.containsKey(lengthKey)) lengths.get(lengthKey).intValue() else 0
+            lengths.put(lengthKey, lengthValue + 1)
+          }
+        }
+
+        (
+          DefinedHuffmanTable.withFrequencies(reprCount),
+          DefinedHuffmanTable.withFrequencies(conceptCount),
+          DefinedHuffmanTable.withFrequencies(lengths)
+        )
+      }
+
+      obs.writeHuffmanTable[Int](correlationReprCountHuffmanTable, symbol => obs.writeNaturalNumber(symbol))
+      obs.writeHuffmanTable[Int](correlationConceptCountHuffmanTable, symbol => obs.writeNaturalNumber(symbol))
+      obs.writeHuffmanTable[Int](correlationVectorLengthHuffmanTable, symbol => obs.writeNaturalNumber(symbol))
+
+      for ((wordId, set) <- bufferSet.jaWordCorrelations) {
+        obs.writeRangedNumber(minValidWord, maxWord, wordId)
+        obs.writeHuffmanSymbol(correlationReprCountHuffmanTable, set.size)
+
+        for ((conceptSet, corrArray) <- set) {
+          obs.writeHuffmanSymbol(correlationConceptCountHuffmanTable, conceptSet.size)
+          for (concept <- conceptSet) {
+            obs.writeRangedNumber(minValidConcept, maxConcept, concept)
+          }
+
+          obs.writeHuffmanSymbol(correlationVectorLengthHuffmanTable, corrArray.length)
+          for (corr <- corrArray) {
+            obs.writeRangedNumber(0, kanjiKanaCorrelationsLength - 1, corr)
+          }
         }
       }
     }

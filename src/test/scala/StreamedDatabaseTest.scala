@@ -184,11 +184,13 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     )
 
     sourceSet.jaWordCorrelations ++= Vector(
-      (0, Vector(0, 2)),
-      (1, Vector(1, 3)),
-      (3, Vector(4)),
-      (4, Vector(5)),
-      (5, Vector(6))
+      (0, Set((Set(0), Vector(0, 2)))),
+      (1, Set((Set(0), Vector(1, 3)))),
+      (3, Set(
+        (Set(1), Vector(4)),
+        (Set(2), Vector(5)),
+        (Set(3), Vector(6))
+      ))
     )
 
     checkWriteAndRead(sourceSet)

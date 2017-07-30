@@ -444,9 +444,20 @@ object Main {
 
         newSeq += conversionIndex
       }
-      for (accIndex <- oldWordAccMap(oldWordId)) {
-        bufferSet.jaWordCorrelations(accIndex) = newSeq.toVector
+
+      val wordId = oldNewMap(oldWordId)
+      val set = bufferSet.jaWordCorrelations.getOrElse(wordId, Set())
+
+      val conceptSet = for (accIndex <- oldWordAccMap(oldWordId)) yield {
+        val acc = bufferSet.acceptations(accIndex)
+        if (acc.word != wordId) {
+          throw new AssertionError()
+        }
+
+        acc.concept
       }
+
+      bufferSet.jaWordCorrelations(oldNewMap(oldWordId)) = set + ((conceptSet, newSeq.toVector))
     }
 
     oldNewMap.toMap
