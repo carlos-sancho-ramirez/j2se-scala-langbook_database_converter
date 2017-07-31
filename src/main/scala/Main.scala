@@ -235,10 +235,10 @@ object Main {
 
   def initialiseDatabase(): BufferSet = {
     implicit val bufferSet = new BufferSet()
-    registerWord("Language", "Idioma", "言語", "げんご")
-    registerWord(enLanguage, "English", "Inglés", "英語", "えいご")
-    registerWord(esLanguage, "Spanish", "Español", "スペイン語", "スペイン")
-    registerWord(jaLanguage, "Japanese", "Japonés", "日本語", "にほんご")
+    registerWord("language", "idioma", "言語", "げんご")
+    registerWord(enLanguage, "English", "inglés", "英語", "えいご")
+    registerWord(esLanguage, "Spanish", "español", "スペイン語", "スペインご")
+    registerWord(jaLanguage, "Japanese", "japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
 
@@ -570,7 +570,7 @@ object Main {
       for (repr <- bufferSet.wordRepresentations) {
         if (repr != InvalidRegister.wordRepresentation) {
           val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
-          val conceptsStr = concepts.mkString(" ")
+          val conceptsStr = concepts.toSet.toList.sortWith(_ < _).mkString(" ")
           val lang = languages(languageIndex(repr.word)).code
           val str = bufferSet.symbolArrays(repr.symbolArray)
           outStream2.println(s"$i,$conceptsStr,${repr.word},$lang,${repr.alphabet},$str")
