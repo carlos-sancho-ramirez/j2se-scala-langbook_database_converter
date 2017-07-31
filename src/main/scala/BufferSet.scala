@@ -76,4 +76,17 @@ class BufferSet {
         (maxWord, maxConcept)
     }
   }
+
+  def accRepresentationsMap: Map[(Int /* word id */, String), Set[Int] /* concepts */] = {
+    accRepresentations.foldLeft(Map[(Int, String), Set[Int]]()) { (map, repr) =>
+      val acc = acceptations(repr.acc)
+      val str = symbolArrays(repr.symbolArray)
+      val concept = acc.concept
+      val word = acc.word
+
+      val key = (word, str)
+      val newValue = map.getOrElse(key, Set[Int]()) + concept
+      map.updated(key, newValue)
+    }
+  }
 }
