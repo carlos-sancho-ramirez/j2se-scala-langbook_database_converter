@@ -7,114 +7,43 @@ import scala.collection.mutable
 
 object Main {
 
-  var conceptCount = 0
+  val enAlphabet = StreamedDatabaseConstants.minValidConcept
+  val esAlphabet = StreamedDatabaseConstants.minValidConcept + 1
+  val kanjiAlphabet = StreamedDatabaseConstants.minValidConcept + 2
+  val kanaAlphabet = StreamedDatabaseConstants.minValidConcept + 3
+  val roumajiAlphabet = StreamedDatabaseConstants.minValidConcept + 4
 
-  val enAlphabet = conceptCount
-  val esAlphabet = conceptCount + 1
-  val kanjiAlphabet = conceptCount + 2
-  val kanaAlphabet = conceptCount + 3
-  val roumajiAlphabet = conceptCount + 4
-
-  val alphabets: Vector[Int] = {
-    val i = conceptCount
-    val r = Vector(
-      i, // English
-      i + 1, // Spanish
-      i + 2, // Japanese kanji
-      i + 3, // Japanese kana
-      i + 4, // Japanese roumaji
-    )
-
-    conceptCount += r.size
-    r
-  }
+  val alphabets = Vector(
+    enAlphabet, // English
+    esAlphabet, // Spanish
+    kanjiAlphabet, // Japanese kanji
+    kanaAlphabet, // Japanese kana
+    roumajiAlphabet // Japanese roumaji
+  )
 
   case class Language(concept: Int, code: String)
 
   val minValidLanguage = 0
   val maxValidLanguage = 2
 
-  val enLanguage = conceptCount
-  val esLanguage = conceptCount + 1
-  val jaLanguage = conceptCount + 2
+  val languageConceptBase = alphabets.max + 1
+  val enLanguage = languageConceptBase
+  val esLanguage = languageConceptBase + 1
+  val jaLanguage = languageConceptBase + 2
 
-  val languages: Vector[Language] = {
-    val i = conceptCount
-    val r = Vector(
-      Language(i, "en"), // English
-      Language(i + 1, "es"), // Spanish
-      Language(i + 2, "ja") // Japanese
-    )
+  val languages = Vector(
+    Language(enLanguage, "en"), // English
+    Language(esLanguage, "es"), // Spanish
+    Language(jaLanguage, "ja") // Japanese
+  )
 
-    conceptCount += r.size
-    r
-  }
+  val dbWordBase = StreamedDatabaseConstants.minValidWord
+  val dbConceptBase = languageConceptBase + languages.size
 
+  // TODO: This should not be static
   val enWords = scala.collection.mutable.BitSet()
   val esWords = scala.collection.mutable.BitSet()
   val jaWords = scala.collection.mutable.BitSet()
-
-  var wordCount = 0
-
-  /**
-    * Add a new English word in the list and returns its id
-    */
-  def appendEnglishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
-    val newIndex = wordCount
-    bufferSet.wordRepresentations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
-    wordCount += 1
-    enWords += newIndex
-    newIndex
-  }
-
-  /**
-    * Add a new Spanish word in the list and returns its id
-    */
-  def appendSpanishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
-    val newIndex = wordCount
-    bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
-    wordCount += 1
-    esWords += newIndex
-    newIndex
-  }
-
-  /**
-    * Add a new Japanese word in the list and returns its id
-    */
-  def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String)(implicit bufferSet: BufferSet): Int = {
-    val newIndex = wordCount
-    bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
-    bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
-
-    wordCount += 1
-    jaWords += newIndex
-    newIndex
-  }
-
-  def registerWord(concept: Int, en: String, es: String, kanji: String, kana: String)(implicit bufferSet: BufferSet): Unit = {
-    if (en != null) {
-      val word = appendEnglishWord(en)
-      bufferSet.acceptations += Acceptation(word, concept)
-    }
-
-    if (es != null) {
-      val word = appendSpanishWord(es)
-      bufferSet.acceptations += Acceptation(word, concept)
-    }
-
-    if (kana != null) {
-      val word = appendJapaneseWord(kanji, kana)
-      bufferSet.acceptations += Acceptation(word, concept)
-    }
-  }
-
-  def registerWord(en: String, es: String, kanji: String, kana: String)(implicit bufferSet: BufferSet): Int = {
-    val concept = conceptCount
-    conceptCount += 1
-
-    registerWord(concept, en, es, kanji, kana)
-    concept
-  }
 
   val hiragana2RoumajiConversionPairs = List(
     "あ" -> "a",
@@ -235,10 +164,67 @@ object Main {
 
   def initialiseDatabase(): BufferSet = {
     implicit val bufferSet = new BufferSet()
-    registerWord("language", "idioma", "言語", "げんご")
-    registerWord(enLanguage, "English", "inglés", "英語", "えいご")
-    registerWord(esLanguage, "Spanish", "español", "スペイン語", "スペインご")
-    registerWord(jaLanguage, "Japanese", "japonés", "日本語", "にほんご")
+    var wordCount = dbWordBase
+    var conceptCount = dbConceptBase
+
+    def appendEnglishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      wordCount += 1
+      enWords += newIndex
+      newIndex
+    }
+
+    /**
+      * Add a new Spanish word in the list and returns its id
+      */
+    def appendSpanishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      wordCount += 1
+      esWords += newIndex
+      newIndex
+    }
+
+    def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
+      bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
+
+      wordCount += 1
+      jaWords += newIndex
+      newIndex
+    }
+
+    def registerWordWithConcept(concept: Int, en: String, es: String, kanji: String, kana: String): Unit = {
+      if (en != null) {
+        val word = appendEnglishWord(en)
+        bufferSet.acceptations += Acceptation(word, concept)
+      }
+
+      if (es != null) {
+        val word = appendSpanishWord(es)
+        bufferSet.acceptations += Acceptation(word, concept)
+      }
+
+      if (kana != null) {
+        val word = appendJapaneseWord(kanji, kana)
+        bufferSet.acceptations += Acceptation(word, concept)
+      }
+    }
+
+    def registerWord(en: String, es: String, kanji: String, kana: String): Int = {
+      val concept = conceptCount
+      conceptCount += 1
+
+      registerWordWithConcept(concept, en, es, kanji, kana)
+      concept
+    }
+
+    registerWord("Language", "idioma", "言語", "げんご")
+    registerWordWithConcept(enLanguage, "English", "inglés", "英語", "えいご")
+    registerWordWithConcept(esLanguage, "Spanish", "español", "スペイン語", "スペインご")
+    registerWordWithConcept(jaLanguage, "Japanese", "japonés", "日本語", "にほんご")
     registerWord(null, null, "漢字", "かんじ")
     registerWord(null, null, "平仮名", "かな")
 
@@ -316,6 +302,18 @@ object Main {
     * Convert from old database schema to the new database schema
     */
   def convertWords(oldWords: Iterable[OldWord], oldWordPronunciations: Map[Int /* old word id */, IndexedSeq[OldPronunciation]])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
+    var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
+    wordCount += 1
+    conceptCount += 1
+
+    def appendSpanishWord(symbolArray: String): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      wordCount += 1
+      esWords += newIndex
+      newIndex
+    }
+
     val oldNewMap = scala.collection.mutable.Map[Int, Int]()
     val oldWordAccMap = scala.collection.mutable.Map[Int /* old word id */, Set[Int] /* Accs */]()
 
@@ -379,8 +377,14 @@ object Main {
           }
         }
 
-        val accIndex = bufferSet.acceptations.length
-        bufferSet.acceptations += Acceptation(jaWord, concept)
+        val acc = Acceptation(jaWord, concept)
+        val alreadyIncludedAccIndex = bufferSet.acceptations.indexOf(acc)
+        val accIndex = if (alreadyIncludedAccIndex >= 0) alreadyIncludedAccIndex else {
+          val index = bufferSet.acceptations.length
+          bufferSet.acceptations += acc
+          index
+        }
+
         accArray += accIndex
         accIndex
       }
@@ -399,22 +403,27 @@ object Main {
           repr.alphabet == kanjiAlphabet && repr.word == jaWord
         )
 
-        if (previousWordReprIndex >= 0) {
-          val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
+        val matchesKanjiWithPrevious = previousWordReprIndex >= 0 &&
+          bufferSet.wordRepresentations(previousWordReprIndex).symbolArray == kanjiSymbolArrayIndex
 
-          val (_, otherAccs) = bufferSet.acceptations.foldLeft((0, Set[Int]())) { case ((i, set), acc) =>
-            if (acc.word == jaWord) (i + 1, set + i)
-            else (i + 1, set)
+        if (!matchesKanjiWithPrevious) {
+          if (previousWordReprIndex >= 0) {
+            val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
+
+            val (_, otherAccs) = bufferSet.acceptations.foldLeft((0, Set[Int]())) { case ((i, set), acc) =>
+              if (acc.word == jaWord) (i + 1, set + i)
+              else (i + 1, set)
+            }
+            for (otherAcc <- otherAccs) {
+              bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
+            }
+
+            bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
           }
-          for (otherAcc <- otherAccs) {
-            bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
+
+          for (acc <- thisAccIndexes) {
+            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
           }
-
-          bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
-        }
-
-        for (acc <- thisAccIndexes) {
-          bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
         }
       }
 
@@ -423,7 +432,8 @@ object Main {
           for (meaning <- meanings) {
             val esWord = appendSpanishWord(meaning)
             val concept = bufferSet.acceptations(accIndex).concept
-            bufferSet.acceptations += Acceptation(esWord, concept)
+            val acc = Acceptation(esWord, concept)
+            bufferSet.acceptations += acc
           }
         }
       }
@@ -465,6 +475,17 @@ object Main {
 
   def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldNewWordIdMap: Map[Int, Int])(implicit bufferSet: BufferSet): Unit = {
     val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
+    var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
+    wordCount += 1
+    conceptCount += 1
+
+    def appendSpanishWord(symbolArray: String): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      wordCount += 1
+      esWords += newIndex
+      newIndex
+    }
 
     for ((listId, name) <- oldLists) {
       val index = bufferSet.addSymbolArray(name)

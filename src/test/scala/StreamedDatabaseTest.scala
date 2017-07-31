@@ -45,13 +45,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val targetSet = new BufferSet()
     StreamedDatabaseReader.read(targetSet, ibs)
 
-    targetSet.symbolArrays shouldBe sourceSet.symbolArrays
-    targetSet.acceptations shouldBe sourceSet.acceptations
-    targetSet.wordRepresentations shouldBe sourceSet.wordRepresentations
-    targetSet.accRepresentations shouldBe sourceSet.accRepresentations
-    targetSet.kanjiKanaCorrelations shouldBe sourceSet.kanjiKanaCorrelations
-    targetSet.jaWordCorrelations shouldBe sourceSet.jaWordCorrelations
-    targetSet.bunchWords shouldBe sourceSet.bunchWords
+    targetSet shouldBe sourceSet
   }
 
   it should "match on write and read acceptations and its representations even if only include symbol arrays" in {

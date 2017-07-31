@@ -660,4 +660,27 @@ class MainTest extends FlatSpec with Matchers {
     jaConcepts(concept1) shouldBe true
     jaConcepts(concept2) shouldBe true
   }
+
+  it should "ignore any duplicated word within the database" in {
+    val kanjiArray = "言語"
+    val kanaArray = "げんご"
+    val esArray = "idioma"
+
+    val oldWords1 = Iterable(
+      OldWord(1, kanjiArray, kanaArray, esArray)
+    )
+
+    val oldWords2 = Iterable(
+      OldWord(1, kanjiArray, kanaArray, esArray),
+      OldWord(2, kanjiArray, kanaArray, esArray)
+    )
+
+    val bufferSet1 = Main.initialiseDatabase()
+    Main.convertWords(oldWords1, Map())(bufferSet1)
+
+    val bufferSet2 = Main.initialiseDatabase()
+    Main.convertWords(oldWords2, Map())(bufferSet2)
+
+    bufferSet1 shouldBe bufferSet2
+  }
 }

@@ -30,6 +30,24 @@ class BufferSet {
   //val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
+  override def hashCode: Int = {
+    symbolArrays.length + acceptations.length //+ bunchWords.length
+  }
+
+  override def equals(other: Any): Boolean = {
+    other != null && other.isInstanceOf[BufferSet] && {
+      val that = other.asInstanceOf[BufferSet]
+
+      symbolArrays == that.symbolArrays &&
+      acceptations == that.acceptations &&
+      wordRepresentations == that.wordRepresentations &&
+      accRepresentations == that.accRepresentations &&
+      kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
+      jaWordCorrelations == that.jaWordCorrelations &&
+      bunchWords == that.bunchWords
+    }
+  }
+
   /**
     * Checks if the given symbol array already exist in the list.
     * If so, the index is returned. If not it is appended into
