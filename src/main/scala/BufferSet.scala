@@ -96,15 +96,15 @@ class BufferSet {
   }
 
   def accRepresentationsMap: Map[(Int /* word id */, String), Set[Int] /* concepts */] = {
-    accRepresentations.foldLeft(Map[(Int, String), Set[Int]]()) { (map, repr) =>
-      val acc = acceptations(repr.acc)
-      val str = symbolArrays(repr.symbolArray)
-      val concept = acc.concept
-      val word = acc.word
+    jaWordCorrelations.foldLeft(Map[(Int, String), Set[Int]]()) { (map, jaWordCorr) =>
+      val wordId = jaWordCorr._1
+      val newEntries = for (setEntry <- jaWordCorr._2) yield {
+        val concepts = setEntry._1
+        val str = setEntry._2.map(index => symbolArrays(kanjiKanaCorrelations(index)._1)).mkString("")
+        ((wordId, str), concepts)
+      }
 
-      val key = (word, str)
-      val newValue = map.getOrElse(key, Set[Int]()) + concept
-      map.updated(key, newValue)
+      map ++ newEntries
     }
   }
 }
