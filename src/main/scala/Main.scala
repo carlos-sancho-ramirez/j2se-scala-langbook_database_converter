@@ -580,10 +580,15 @@ object Main {
       }
 
       // Dump all words in accRepresentations
-      for (((wordId, str), concepts) <- bufferSet.accRepresentationsMap) {
+      val accRepresentationsMap = bufferSet.accRepresentationsMap.toList.sortWith {
+        case (((wordId1, _), _), ((wordId2, _), _)) => wordId1 < wordId2
+      }
+
+      for (((wordId, str), concepts) <- accRepresentationsMap) {
         val lang = "ja"
         val alphabet = kanjiAlphabet
-        outStream2.println(s"$i,${concepts.mkString(" ")},$wordId,$lang,$alphabet,$str")
+        val conceptsStr = concepts.toList.sortWith((a,b) => a < b).mkString(" ")
+        outStream2.println(s"$i,$conceptsStr,$wordId,$lang,$alphabet,$str")
 
         i += 1
       }
