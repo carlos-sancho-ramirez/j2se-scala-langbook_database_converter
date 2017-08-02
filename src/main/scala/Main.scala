@@ -225,8 +225,8 @@ object Main {
     registerWordWithConcept(enLanguage, "English", "inglés", "英語", "えいご")
     registerWordWithConcept(esLanguage, "Spanish", "español", "スペイン語", "スペインご")
     registerWordWithConcept(jaLanguage, "Japanese", "japonés", "日本語", "にほんご")
-    registerWord(null, null, "漢字", "かんじ")
-    registerWord(null, null, "平仮名", "かな")
+    registerWord("kanji", "kanji", "漢字", "かんじ")
+    registerWord("kana", "kana", "平仮名", "かな")
 
     // Add conversions
     val conversionPairs = for ((kanaText, roumajiText) <- hiragana2RoumajiConversionPairs) yield {
