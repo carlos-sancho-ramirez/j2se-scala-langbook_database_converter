@@ -684,4 +684,31 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet1 shouldBe bufferSet2
   }
+
+  it should "ignore any duplicated word within the database (with 2 words with same kana)" in {
+    val kanjiArray1 = "漢字"
+    val kanjiArray2 = "感じ"
+    val kanaArray = "かんじ"
+    val esArray1 = "kanji"
+    val esArray2 = "sensación"
+
+    val oldWords1 = Iterable(
+      OldWord(1, kanjiArray1, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2)
+    )
+
+    val oldWords2 = Iterable(
+      OldWord(1, kanjiArray1, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2),
+      OldWord(3, kanjiArray1, kanaArray, esArray1)
+    )
+
+    val bufferSet1 = new BufferSet()
+    Main.convertWords(oldWords1, Map())(bufferSet1)
+
+    val bufferSet2 = new BufferSet()
+    Main.convertWords(oldWords2, Map())(bufferSet2)
+
+    bufferSet1 shouldBe bufferSet2
+  }
 }

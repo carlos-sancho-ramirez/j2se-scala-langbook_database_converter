@@ -424,7 +424,10 @@ object Main {
           }
 
           for (acc <- thisAccIndexes) {
-            bufferSet.accRepresentations += AccRepresentation(acc, kanjiSymbolArrayIndex)
+            val accRepr = AccRepresentation(acc, kanjiSymbolArrayIndex)
+            if (!bufferSet.accRepresentations.contains(accRepr)) {
+              bufferSet.accRepresentations += accRepr
+            }
           }
         }
       }
