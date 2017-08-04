@@ -256,7 +256,7 @@ class MainTest extends FlatSpec with Matchers {
   }
 
   it should "include 2 accRepresentations when only matching its pronunciation" in {
-    implicit val bufferSet = Main.initialiseDatabase()
+    implicit val bufferSet = new BufferSet()
 
     val kanjiArray1 = "早い"
     val kanjiArray2 = "速い"
@@ -288,6 +288,7 @@ class MainTest extends FlatSpec with Matchers {
     val kanaReprIndex = bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
     val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
 
+    bufferSet.accRepresentations.length shouldBe 2
     val kanjiReprIndex1 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex1)
     val kanjiReprIndex2 = bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex2)
 

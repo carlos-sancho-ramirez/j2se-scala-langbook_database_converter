@@ -365,6 +365,7 @@ object Main {
       oldNewMap(oldWord.wordId) = jaWord
 
       val accArray = ArrayBuffer[Int]()
+      val accInsertedJustNow = mutable.Set[Int]()
       val thisAccIndexes: Array[Int] = for (knownConcept <- knownConcepts) yield {
         val concept = {
           if (knownConcept >= 0) {
@@ -382,6 +383,7 @@ object Main {
         val accIndex = if (alreadyIncludedAccIndex >= 0) alreadyIncludedAccIndex else {
           val index = bufferSet.acceptations.length
           bufferSet.acceptations += acc
+          accInsertedJustNow += index
           index
         }
 
@@ -411,7 +413,7 @@ object Main {
             val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
 
             val (_, otherAccs) = bufferSet.acceptations.foldLeft((0, Set[Int]())) { case ((i, set), acc) =>
-              if (acc.word == jaWord) (i + 1, set + i)
+              if (acc.word == jaWord && !accInsertedJustNow(i)) (i + 1, set + i)
               else (i + 1, set)
             }
             for (otherAcc <- otherAccs) {
