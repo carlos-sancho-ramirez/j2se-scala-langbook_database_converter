@@ -553,6 +553,40 @@ object Main {
     } while(false)
   }
 
+  case class WordEntry(concepts: Set[Int], word: Int, lang: String, alphabet: Int, str: String) {
+    override def toString(): String = {
+      val conceptsStr = concepts.toList.sortWith(_ < _).mkString(" ")
+      s"$conceptsStr,$word,$lang,$alphabet,$str"
+    }
+  }
+
+  private def composeWordEntrySet(bufferSet: BufferSet): Set[WordEntry] = {
+    val array = mutable.ArrayBuffer[WordEntry]()
+
+    // Dump all words in wordRepresentations
+    for (repr <- bufferSet.wordRepresentations) {
+      if (repr != InvalidRegister.wordRepresentation) {
+        val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
+        val lang = languages(languageIndex(repr.word)).code
+        val str = bufferSet.symbolArrays(repr.symbolArray)
+        array += WordEntry(concepts.toSet, repr.word, lang, repr.alphabet, str)
+      }
+    }
+
+    // Dump all words in accRepresentations
+    val accRepresentationsMap = bufferSet.accRepresentationsMap.toList.sortWith {
+      case (((wordId1, _), _), ((wordId2, _), _)) => wordId1 < wordId2
+    }
+
+    for (((wordId, str), concepts) <- accRepresentationsMap) {
+      val lang = "ja"
+      val alphabet = kanjiAlphabet
+      array += WordEntry(concepts, wordId, lang, alphabet, str)
+    }
+
+    array.toSet
+  }
+
   def main(args: Array[String]): Unit = {
     implicit val bufferSet = initialiseDatabase()
 
@@ -590,38 +624,8 @@ object Main {
 
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
-      case class WordEntry(concepts: Set[Int], word: Int, lang: String, alphabet: Int, str: String) {
-        override def toString(): String = {
-          val conceptsStr = concepts.toList.sortWith(_ < _).mkString(" ")
-          s"$conceptsStr,$word,$lang,$alphabet,$str"
-        }
-      }
-
-      val array = mutable.ArrayBuffer[WordEntry]()
-
-      // Dump all words in wordRepresentations
-      for (repr <- bufferSet.wordRepresentations) {
-        if (repr != InvalidRegister.wordRepresentation) {
-          val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
-          val lang = languages(languageIndex(repr.word)).code
-          val str = bufferSet.symbolArrays(repr.symbolArray)
-          array += WordEntry(concepts.toSet, repr.word, lang, repr.alphabet, str)
-        }
-      }
-
-      // Dump all words in accRepresentations
-      val accRepresentationsMap = bufferSet.accRepresentationsMap.toList.sortWith {
-        case (((wordId1, _), _), ((wordId2, _), _)) => wordId1 < wordId2
-      }
-
-      for (((wordId, str), concepts) <- accRepresentationsMap) {
-        val lang = "ja"
-        val alphabet = kanjiAlphabet
-        array += WordEntry(concepts, wordId, lang, alphabet, str)
-      }
-
       var i = 0
-      for (wordEntry <- array.toSet[WordEntry].toVector.sortWith { case (a, b) =>
+      for (wordEntry <- composeWordEntrySet(bufferSet).toVector.sortWith { case (a, b) =>
         a.word < b.word || a.word == b.word && {
           a.alphabet < b.alphabet || a.alphabet == b.alphabet && {
             a.concepts.min < b.concepts.min
