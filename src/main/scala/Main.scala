@@ -444,8 +444,13 @@ object Main {
       }
     }
 
+    // Exclude all correlations whose kanji and kana matches
+    val filteredOldWordPronunciations = oldWordPronunciations.filter { case (_ ,seq) =>
+        seq.exists(pronunciation => pronunciation.kanji != pronunciation.kana)
+    }
+
     // Include correlations
-    for ((oldWordId, seq) <- oldWordPronunciations) {
+    for ((oldWordId, seq) <- filteredOldWordPronunciations) {
       val newSeq = mutable.ArrayBuffer[Int /* conversion index */]()
       for (pronunciation <- seq) {
         val kanjiArray = bufferSet.addSymbolArray(pronunciation.kanji)

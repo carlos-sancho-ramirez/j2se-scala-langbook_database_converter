@@ -711,4 +711,58 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet1 shouldBe bufferSet2
   }
+
+  it should "create correlations for a word" in {
+    val kanjiArray = "大変"
+    val kanaArray = "たいへん"
+    val esArray = "diapositiva"
+
+    val oldWords = Iterable(
+      OldWord(1, kanjiArray, kanaArray, esArray)
+    )
+
+    val oldPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation("大", "たい"),
+        OldPronunciation("変", "へん")
+      )
+    )
+
+    val bufferSet = new BufferSet()
+    Main.convertWords(oldWords, oldPronunciations)(bufferSet)
+
+    bufferSet.kanjiKanaCorrelations.length shouldBe 2
+    val corrIndex1 = bufferSet.kanjiKanaCorrelations.indexWhere(corr => bufferSet.symbolArrays(corr._1) == "大")
+    val corrIndex2 = bufferSet.kanjiKanaCorrelations.indexWhere(corr => bufferSet.symbolArrays(corr._1) == "変")
+    bufferSet.symbolArrays(bufferSet.kanjiKanaCorrelations(corrIndex1)._2) shouldBe "たい"
+    bufferSet.symbolArrays(bufferSet.kanjiKanaCorrelations(corrIndex2)._2) shouldBe "へん"
+
+    bufferSet.jaWordCorrelations.size shouldBe 1
+    bufferSet.jaWordCorrelations.head._2.size shouldBe 1
+    bufferSet.jaWordCorrelations.head._2.head._2 shouldBe Vector(corrIndex1, corrIndex2)
+  }
+
+  it should "not create correlations for a purely katakana word" in {
+    val jaArray = "スライド"
+    val esArray = "diapositiva"
+
+    val oldPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation("ス", "ス"),
+        OldPronunciation("ラ", "ラ"),
+        OldPronunciation("イ", "イ"),
+        OldPronunciation("ド", "ド")
+      )
+    )
+
+    val oldWords = Iterable(
+      OldWord(1, jaArray, jaArray, esArray)
+    )
+
+    val bufferSet = new BufferSet()
+    Main.convertWords(oldWords, oldPronunciations)(bufferSet)
+
+    bufferSet.kanjiKanaCorrelations shouldBe empty
+    bufferSet.jaWordCorrelations shouldBe empty
+  }
 }
