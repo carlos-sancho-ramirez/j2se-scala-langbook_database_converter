@@ -350,19 +350,6 @@ class MainTest extends FlatSpec with Matchers {
     val kanaReprIndex = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
     val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
 
-    bufferSet.accRepresentations.length shouldBe 2
-    val kanjiReprIndex1 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex1)
-    val kanjiReprIndex2 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex2)
-
-    val jaAccIndex1 = bufferSet.accRepresentations(kanjiReprIndex1).acc
-    jaAccIndex1 should be >= 0
-
-    val jaAccIndex2 = bufferSet.accRepresentations(kanjiReprIndex2).acc
-    jaAccIndex2 should be >= 0
-
-    bufferSet.acceptations(jaAccIndex1).word shouldBe jaWord
-    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
-
     val esReprIndex1 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
     val esReprIndex2 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
 
@@ -375,14 +362,11 @@ class MainTest extends FlatSpec with Matchers {
     jaWord should not be esWord1
     jaWord should not be esWord2
 
-    val esConcept1 = bufferSet.acceptations.find(_.word == esWord1).get.concept
-    val esConcept2 = bufferSet.acceptations.find(_.word == esWord2).get.concept
-    val jaConcept1 = bufferSet.acceptations(jaAccIndex1).concept
-    val jaConcept2 = bufferSet.acceptations(jaAccIndex2).concept
+    val concept1 = bufferSet.acceptations.find(_.word == esWord1).get.concept
+    val concept2 = bufferSet.acceptations.find(_.word == esWord2).get.concept
+    concept1 should not be concept2
 
-    jaConcept1 shouldBe esConcept1
-    jaConcept2 shouldBe esConcept2
-    jaConcept1 should not be jaConcept2
+    bufferSet.acceptations.collect { case acc if acc.word == jaWord => acc.concept}.toSet shouldBe Set(concept1, concept2)
 
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
@@ -401,15 +385,15 @@ class MainTest extends FlatSpec with Matchers {
 
     val corrSeq = bufferSet.jaWordCorrelations(jaWord).toSeq
     corrSeq.size shouldBe 2
-    if (corrSeq.head._1 == Set(jaConcept1)) {
+    if (corrSeq.head._1 == Set(concept1)) {
       corrSeq.head._2 shouldBe Vector(correlationA1, correlationA2)
-      corrSeq(1)._1 shouldBe Set(jaConcept2)
+      corrSeq(1)._1 shouldBe Set(concept2)
       corrSeq(1)._2 shouldBe Vector(correlationB1, correlationB2)
     }
     else {
-      corrSeq.head._1 shouldBe Set(jaConcept2)
+      corrSeq.head._1 shouldBe Set(concept2)
       corrSeq.head._2 shouldBe Vector(correlationB1, correlationB2)
-      corrSeq(1)._1 shouldBe Set(jaConcept1)
+      corrSeq(1)._1 shouldBe Set(concept1)
       corrSeq(1)._2 shouldBe Vector(correlationA1, correlationA2)
     }
   }
@@ -449,23 +433,6 @@ class MainTest extends FlatSpec with Matchers {
     val kanaReprIndex = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
     val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
 
-    val kanjiReprIndex1 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex1)
-    val kanjiReprIndex2 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex2)
-    val kanjiReprIndex3 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex3)
-
-    val jaAccIndex1 = bufferSet.accRepresentations(kanjiReprIndex1).acc
-    jaAccIndex1 should be >= 0
-
-    val jaAccIndex2 = bufferSet.accRepresentations(kanjiReprIndex2).acc
-    jaAccIndex2 should be >= 0
-
-    val jaAccIndex3 = bufferSet.accRepresentations(kanjiReprIndex3).acc
-    jaAccIndex3 should be >= 0
-
-    bufferSet.acceptations(jaAccIndex1).word shouldBe jaWord
-    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
-    bufferSet.acceptations(jaAccIndex3).word shouldBe jaWord
-
     val esReprIndex1 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
     val esReprIndex2 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex2 && repr.alphabet == Main.esAlphabet)
     val esReprIndex3 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex3 && repr.alphabet == Main.esAlphabet)
@@ -479,20 +446,18 @@ class MainTest extends FlatSpec with Matchers {
     val esWord3 = bufferSet.wordRepresentations(esReprIndex3).word
     esWord3 should be >= 0
 
-    jaWord should not be esWord1
-    jaWord should not be esWord2
-    jaWord should not be esWord3
+    esWord1 should not be jaWord
+    esWord2 should not be jaWord
+    esWord3 should not be jaWord
 
     val concept1 = bufferSet.acceptations.find(_.word == esWord1).get.concept
     val concept2 = bufferSet.acceptations.find(_.word == esWord2).get.concept
     val concept3 = bufferSet.acceptations.find(_.word == esWord3).get.concept
-    bufferSet.acceptations(jaAccIndex1).concept shouldBe concept1
-    bufferSet.acceptations(jaAccIndex2).concept shouldBe concept2
-    bufferSet.acceptations(jaAccIndex3).concept shouldBe concept3
-
     concept1 should not be concept2
     concept1 should not be concept3
     concept2 should not be concept3
+
+    bufferSet.acceptations.collect { case acc if acc.word == jaWord => acc.concept}.toSet shouldBe Set(concept1, concept2, concept3)
 
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
@@ -577,32 +542,18 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex1) shouldBe false
     bufferSet.wordRepresentations.exists(_.symbolArray == kanjiIndex2) shouldBe false
 
-    val kanjiAccReprIndex1 = bufferSet.accRepresentations findIndexWhere(_.symbolArray == kanjiIndex1)
-    val kanjiAccReprIndex2a = bufferSet.accRepresentations findIndexWhere(_.symbolArray == kanjiIndex2)
-    val kanjiAccReprIndex2b = bufferSet.accRepresentations findIndexWhere(_.symbolArray == kanjiIndex2, kanjiAccReprIndex2a + 1)
     val kanaReprIndex = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == kanaIndex && repr.alphabet == Main.kanaAlphabet)
     val esReprIndex1 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
     val esReprIndexes2 = esIndexes2.map(_.map(index => bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == index && repr.alphabet == Main.esAlphabet)))
 
-    val accIndex1 = bufferSet.accRepresentations(kanjiAccReprIndex1).acc
-    val accIndex2a = bufferSet.accRepresentations(kanjiAccReprIndex2a).acc
-    val accIndex2b = bufferSet.accRepresentations(kanjiAccReprIndex2b).acc
-
-    val concept1 = bufferSet.acceptations(accIndex1).concept
-    val concept2a = bufferSet.acceptations(accIndex2a).concept
-    val concept2b = bufferSet.acceptations(accIndex2b).concept
-    concept1 should not be concept2a
-    concept1 should not be concept2b
-    concept2a should not be concept2b
-
     val jaWord = bufferSet.wordRepresentations(kanaReprIndex).word
-    bufferSet.acceptations(accIndex1).word shouldBe jaWord
-    bufferSet.acceptations(accIndex2a).word shouldBe jaWord
-    bufferSet.acceptations(accIndex2b).word shouldBe jaWord
-
     val esWord1 = bufferSet.wordRepresentations(esReprIndex1).word
     esWord1 should be >= 0
     jaWord should not be esWord1
+
+    val esWord1Concepts = bufferSet.acceptations.collect { case acc if acc.word == esWord1 => acc.concept }.toSet
+    esWord1Concepts.size shouldBe 1
+    val concept1 = esWord1Concepts.head
 
     val esWords2 = esReprIndexes2.map(_.map(index => bufferSet.wordRepresentations(index).word))
     for (words <- esWords2; word <- words) {
@@ -617,13 +568,12 @@ class MainTest extends FlatSpec with Matchers {
       }.get
     })
 
-    val esConcepts2 = esConceptIndexes2.map(_.reduce { (a,b) =>
+    val concepts2 = esConceptIndexes2.map(_.reduce { (a,b) =>
       if (a != b) throw new AssertionError()
       a
     }).toSet
 
-    esConcepts2 should contain (concept2a)
-    esConcepts2 should contain (concept2b)
+    bufferSet.acceptations.collect { case acc if acc.word == jaWord => acc.concept}.toSet shouldBe (concepts2 + concept1)
 
     val correlation1a = bufferSet.kanjiKanaCorrelations findIndexOf (kanjiIndex1a, kanaIndexA)
     val correlation2a = bufferSet.kanjiKanaCorrelations findIndexOf (kanjiIndex2a, kanaIndexA)
@@ -634,11 +584,11 @@ class MainTest extends FlatSpec with Matchers {
 
     if (corrSeq.head._1 == Set(concept1)) {
       corrSeq.head._2 shouldBe Vector(correlation1a, correlationB)
-      corrSeq(1)._1 shouldBe Set(concept2a, concept2b)
+      corrSeq(1)._1 shouldBe concepts2
       corrSeq(1)._2 shouldBe Vector(correlation2a, correlationB)
     }
     else {
-      corrSeq.head._1 shouldBe Set(concept2a, concept2b)
+      corrSeq.head._1 shouldBe concepts2
       corrSeq.head._2 shouldBe Vector(correlation2a, correlationB)
       corrSeq(1)._1 shouldBe Set(concept1)
       corrSeq(1)._2 shouldBe Vector(correlation1a, correlationB)
@@ -723,10 +673,6 @@ class MainTest extends FlatSpec with Matchers {
     val kanaReprIndex = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == kanaIndex)
     bufferSet.wordRepresentations.indexWhere(repr => repr.symbolArray == kanaIndex, kanaReprIndex + 1) should be < 0
     bufferSet.wordRepresentations(kanaReprIndex).alphabet shouldBe Main.kanaAlphabet
-
-    val kanjiAccReprIndex2 = bufferSet.accRepresentations findIndexWhere(repr => repr.symbolArray == kanjiIndex2)
-    bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanjiIndex2, kanjiAccReprIndex2 + 1) should be < 0
-    bufferSet.accRepresentations.indexWhere(repr => repr.symbolArray == kanaReprIndex) should be < 0
 
     val esReprIndex1 = bufferSet.wordRepresentations findIndexWhere(repr => repr.symbolArray == esIndex1 && repr.alphabet == Main.esAlphabet)
     val esReprIndex2 = esIndex2.map(index => bufferSet.wordRepresentations.findIndexWhere(repr => repr.symbolArray == index && repr.alphabet == Main.esAlphabet))

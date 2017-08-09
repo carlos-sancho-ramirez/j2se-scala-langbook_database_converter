@@ -410,24 +410,7 @@ object Main {
 
         if (!matchesKanjiWithPrevious) {
           if (previousWordReprIndex >= 0) {
-            val otherSymbolArray = bufferSet.wordRepresentations(previousWordReprIndex).symbolArray
-
-            val (_, otherAccs) = bufferSet.acceptations.foldLeft((0, Set[Int]())) { case ((i, set), acc) =>
-              if (acc.word == jaWord && !accInsertedJustNow(i)) (i + 1, set + i)
-              else (i + 1, set)
-            }
-            for (otherAcc <- otherAccs) {
-              bufferSet.accRepresentations += AccRepresentation(otherAcc, otherSymbolArray)
-            }
-
             bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
-          }
-
-          for (acc <- thisAccIndexes) {
-            val accRepr = AccRepresentation(acc, kanjiSymbolArrayIndex)
-            if (!bufferSet.accRepresentations.contains(accRepr)) {
-              bufferSet.accRepresentations += accRepr
-            }
           }
         }
       }

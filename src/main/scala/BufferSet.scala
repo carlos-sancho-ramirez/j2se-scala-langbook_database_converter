@@ -2,7 +2,6 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
-case class AccRepresentation(acc: Int, symbolArray: Int) // There is no alphabet because so far it is always "kanji"
 case class BunchWord(bunchConcept: Int, word: Int)
 
 object InvalidRegister {
@@ -16,7 +15,6 @@ class BufferSet {
   val wordRepresentations = ArrayBuffer[WordRepresentation]()
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
-  val accRepresentations = ArrayBuffer[AccRepresentation]()
   val bunchWords = ArrayBuffer[BunchWord]()
   val conversions = scala.collection.mutable.Set[Conversion]()
 
@@ -31,7 +29,7 @@ class BufferSet {
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
   override def hashCode: Int = {
-    symbolArrays.length + acceptations.length //+ bunchWords.length
+    symbolArrays.length + acceptations.length + bunchWords.length
   }
 
   override def equals(other: Any): Boolean = {
@@ -41,7 +39,6 @@ class BufferSet {
       symbolArrays == that.symbolArrays &&
       acceptations == that.acceptations &&
       wordRepresentations == that.wordRepresentations &&
-      accRepresentations == that.accRepresentations &&
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
       jaWordCorrelations == that.jaWordCorrelations &&
       bunchWords == that.bunchWords

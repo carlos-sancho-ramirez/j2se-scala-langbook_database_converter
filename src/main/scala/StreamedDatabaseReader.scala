@@ -51,14 +51,6 @@ object StreamedDatabaseReader {
       bufferSet.wordRepresentations += WordRepresentation(word, concept, symbolArray)
     }
 
-    // Export acceptation representations
-    val accRepresentationLength = ibs.readNaturalNumber().toInt
-    for (i <- 0 until accRepresentationLength) {
-      val acc = ibs.readRangedNumber(0, acceptationsLength - 1)
-      val symbolArray = ibs.readRangedNumber(0, symbolArraysLength - 1)
-      bufferSet.accRepresentations += AccRepresentation(acc, symbolArray)
-    }
-
     // Export kanji-kana correlations
     val kanjiKanaCorrelationsLength = ibs.readNaturalNumber().toInt
     for (i <- 0 until kanjiKanaCorrelationsLength) {

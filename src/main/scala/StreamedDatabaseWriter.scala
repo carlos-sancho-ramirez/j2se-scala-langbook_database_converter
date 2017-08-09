@@ -77,15 +77,6 @@ object StreamedDatabaseWriter {
       }
     }
 
-    // Export acceptation representations
-    val accRepresentationLength = bufferSet.accRepresentations.length
-    println(s"Exporting acceptation representations ($accRepresentationLength in total)")
-    obs.writeNaturalNumber(accRepresentationLength)
-    for (repr <- bufferSet.accRepresentations) {
-      obs.writeRangedNumber(0, acceptationsLength - 1, repr.acc)
-      obs.writeRangedNumber(0, symbolArraysLength - 1, repr.symbolArray)
-    }
-
     // Export kanji-kana correlations
     val kanjiKanaCorrelationsLength = bufferSet.kanjiKanaCorrelations.length
     obs.writeNaturalNumber(kanjiKanaCorrelationsLength)

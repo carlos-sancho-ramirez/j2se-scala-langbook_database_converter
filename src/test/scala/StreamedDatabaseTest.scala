@@ -103,12 +103,6 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       WordRepresentation(6, Main.esAlphabet, 11)
     )
 
-    sourceSet.accRepresentations ++= Vector(
-      AccRepresentation(3, 5),
-      AccRepresentation(4, 6),
-      AccRepresentation(5, 7)
-    )
-
     checkWriteAndRead(sourceSet)
   }
 
@@ -159,12 +153,6 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       WordRepresentation(4, Main.esAlphabet, 9),
       WordRepresentation(5, Main.esAlphabet, 10),
       WordRepresentation(6, Main.esAlphabet, 11)
-    )
-
-    sourceSet.accRepresentations ++= Vector(
-      AccRepresentation(3, 5),
-      AccRepresentation(4, 6),
-      AccRepresentation(5, 7)
     )
 
     sourceSet.kanjiKanaCorrelations ++= Vector(
