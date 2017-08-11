@@ -186,17 +186,31 @@ object Main {
       newIndex
     }
 
-    def appendJapaneseWord(kanjiSymbolArray: String, kanaSymbolArray:String): Int = {
-      val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanjiAlphabet, bufferSet.addSymbolArray(kanjiSymbolArray)))
-      bufferSet.wordRepresentations.append(WordRepresentation(wordCount, kanaAlphabet, bufferSet.addSymbolArray(kanaSymbolArray)))
+    def appendJapaneseWord(concepts: Set[Int], correlation: Vector[(String, String)]): Int = {
+      val vector = correlation.map {
+        case (kanjiStr, kanaStr) =>
+          val kanjiIndex = bufferSet.addSymbolArray(kanjiStr)
+          val kanaIndex = bufferSet.addSymbolArray(kanaStr)
+          val pair = (kanjiIndex, kanaIndex)
+
+          val foundIndex = bufferSet.kanjiKanaCorrelations.indexOf(pair)
+          if (foundIndex >= 0) foundIndex
+          else {
+            val newIndex = bufferSet.kanjiKanaCorrelations.size
+            bufferSet.kanjiKanaCorrelations += pair
+            newIndex
+          }
+      }
+
+      val wordIndex = wordCount
+      bufferSet.jaWordCorrelations(wordIndex) = Set((concepts, vector))
 
       wordCount += 1
-      jaWords += newIndex
-      newIndex
+      jaWords += wordIndex
+      wordIndex
     }
 
-    def registerWordWithConcept(concept: Int, en: String, es: String, kanji: String, kana: String): Unit = {
+    def registerWordWithConcept(concept: Int, en: String, es: String, correlation: Vector[(String, String)]): Unit = {
       if (en != null) {
         val word = appendEnglishWord(en)
         bufferSet.acceptations += Acceptation(word, concept)
@@ -207,26 +221,26 @@ object Main {
         bufferSet.acceptations += Acceptation(word, concept)
       }
 
-      if (kana != null) {
-        val word = appendJapaneseWord(kanji, kana)
+      if (correlation != null) {
+        val word = appendJapaneseWord(Set(concept), correlation)
         bufferSet.acceptations += Acceptation(word, concept)
       }
     }
 
-    def registerWord(en: String, es: String, kanji: String, kana: String): Int = {
+    def registerWord(en: String, es: String, correlation: Vector[(String, String)]): Int = {
       val concept = conceptCount
       conceptCount += 1
 
-      registerWordWithConcept(concept, en, es, kanji, kana)
+      registerWordWithConcept(concept, en, es, correlation)
       concept
     }
 
-    registerWord("Language", "idioma", "言語", "げんご")
-    registerWordWithConcept(enLanguage, "English", "inglés", "英語", "えいご")
-    registerWordWithConcept(esLanguage, "Spanish", "español", "スペイン語", "スペインご")
-    registerWordWithConcept(jaLanguage, "Japanese", "japonés", "日本語", "にほんご")
-    registerWord("kanji", "kanji", "漢字", "かんじ")
-    registerWord("kana", "kana", "平仮名", "かな")
+    registerWord("Language", "idioma", Vector("言" -> "げん", "語" -> "ご"))
+    registerWordWithConcept(enLanguage, "English", "inglés", Vector("英" -> "えい", "語" -> "ご"))
+    registerWordWithConcept(esLanguage, "Spanish", "español", Vector("スペイン" -> "スペイン", "語" -> "ご"))
+    registerWordWithConcept(jaLanguage, "Japanese", "japonés", Vector("日本" -> "にほん", "語" -> "ご"))
+    registerWord("kanji", "kanji", Vector("漢" -> "かん", "字" -> "じ"))
+    registerWord("kana", "kana", Vector("仮" -> "か", "名" -> "な"))
 
     // Add conversions
     val conversionPairs = for ((kanaText, roumajiText) <- hiragana2RoumajiConversionPairs) yield {
@@ -317,22 +331,42 @@ object Main {
     val oldNewMap = scala.collection.mutable.Map[Int, Int]()
     val oldWordAccMap = scala.collection.mutable.Map[Int /* old word id */, Set[Int] /* Accs */]()
 
+    val kanaWordMap = scala.collection.mutable.Map[String, Int]()
+
+    for (repr <- bufferSet.wordRepresentations if repr.alphabet == Main.kanaAlphabet) {
+      val str = bufferSet.symbolArrays(repr.symbolArray)
+      if (kanaWordMap.contains(str)) {
+        throw new AssertionError()
+      }
+
+      kanaWordMap(str) = repr.word
+    }
+
+    for ((wordId, set) <- bufferSet.jaWordCorrelations) {
+      val strSet = set.map(_._2.map(index => bufferSet.kanjiKanaCorrelations(index)._2).map(bufferSet.symbolArrays).mkString(""))
+      if (strSet.size != 1) {
+        throw new AssertionError()
+      }
+
+      val str = strSet.head
+      if (kanaWordMap.contains(str) && kanaWordMap(str) != wordId) {
+        throw new AssertionError()
+      }
+
+      kanaWordMap(strSet.head) = wordId
+    }
+
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
       val kanjiSymbolArray = oldWord.kanjiSymbolArray
       val kanaSymbolArray = oldWord.kanaSymbolArray
       val spSymbolArrays = parseOldMeaning(oldWord.spSymbolArray)
 
-      // Register all strings in the database if still not present and retrieve its ids
-      val kanjiSymbolArrayIndex = bufferSet.addSymbolArray(kanjiSymbolArray)
-      val kanaSymbolArrayIndex = bufferSet.addSymbolArray(kanaSymbolArray)
+      // Register all strings for Spanish in the database if they are still not present and retrieve its ids
       val spSymbolArrayIndexes = spSymbolArrays.map(_.map(bufferSet.addSymbolArray))
 
       // It is assumed that there cannot be more than one word with the same kana
-      val knownJaWord: Option[Int] = bufferSet.wordRepresentations.collectFirst {
-        case repr if repr.symbolArray == kanaSymbolArrayIndex && repr.alphabet == kanaAlphabet =>
-          repr.word
-      }
+      val knownJaWord = kanaWordMap.get(kanaSymbolArray)
 
       val knownConcepts: Array[Int] = for (arrayIndexes <- spSymbolArrayIndexes) yield {
         val wordIndexes: Array[Int] = arrayIndexes.map { index =>
@@ -358,8 +392,13 @@ object Main {
         wordCount += 1
         jaWords += jaWord
 
-        bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanaAlphabet, kanaSymbolArrayIndex))
+        kanaWordMap(kanaSymbolArray) = jaWord
         jaWord
+      }
+
+      if (kanjiSymbolArray == kanaSymbolArray) {
+        val kanaSymbolArrayIndex = bufferSet.addSymbolArray(kanaSymbolArray)
+        bufferSet.wordRepresentations += WordRepresentation(jaWord, kanaAlphabet, kanaSymbolArrayIndex)
       }
 
       oldNewMap(oldWord.wordId) = jaWord
@@ -391,29 +430,6 @@ object Main {
         accIndex
       }
       oldWordAccMap(oldWord.wordId) = accArray.toSet
-
-      if (knownJaWord.isEmpty /* New word */) {
-        if (kanjiSymbolArrayIndex != kanaSymbolArrayIndex) {
-          bufferSet.wordRepresentations.append(WordRepresentation(jaWord, kanjiAlphabet, kanjiSymbolArrayIndex))
-        }
-      }
-      else {
-        // we assume here that the concepts are different between the existing word and the new included word
-        // TODO: Check if this assumption is true and implement code to execute when false
-
-        val previousWordReprIndex = bufferSet.wordRepresentations.indexWhere( repr =>
-          repr.alphabet == kanjiAlphabet && repr.word == jaWord
-        )
-
-        val matchesKanjiWithPrevious = previousWordReprIndex >= 0 &&
-          bufferSet.wordRepresentations(previousWordReprIndex).symbolArray == kanjiSymbolArrayIndex
-
-        if (!matchesKanjiWithPrevious) {
-          if (previousWordReprIndex >= 0) {
-            bufferSet.wordRepresentations(previousWordReprIndex) = InvalidRegister.wordRepresentation
-          }
-        }
-      }
 
       for (((meanings, knownConcept), accIndex) <- spSymbolArrays zip knownConcepts zip thisAccIndexes) {
         if (knownConcept < 0) {
@@ -533,9 +549,18 @@ object Main {
         case bunchWord if bunchWord.bunchConcept == transitiveVerbConcept => bunchWord.word
       }
 
-      val wordsInList = r.map(wordId => bufferSet.wordRepresentations.collectFirst {
-        case repr if repr.alphabet == kanaAlphabet && repr.word == wordId => bufferSet.symbolArrays(repr.symbolArray)
-      }.get).toList
+      val wordsInList = r.map { wordId =>
+        val fromWordRepr = bufferSet.wordRepresentations.collectFirst {
+          case repr if repr.alphabet == kanaAlphabet && repr.word == wordId => bufferSet.symbolArrays(repr.symbolArray)
+        }
+
+        fromWordRepr.getOrElse {
+          val vector = bufferSet.jaWordCorrelations(wordId).head._2
+          vector
+            .map(index => bufferSet.kanjiKanaCorrelations(index)._2)
+            .map(bufferSet.symbolArrays).mkString("")
+        }
+      }.toList
 
       println(s"Encontradas ${r.length} palabras en la lista 'verbo transitivo': $wordsInList")
     } while(false)
@@ -561,17 +586,18 @@ object Main {
       }
     }
 
-    // Dump all words in accRepresentations
-    val accRepresentationsMap = bufferSet.accRepresentationsMap.toList.sortWith {
-      case (((wordId1, _), _), ((wordId2, _), _)) => wordId1 < wordId2
-    }
-
-    for (((wordId, str), concepts) <- accRepresentationsMap) {
+    for ((wordId, set) <- bufferSet.jaWordCorrelations) {
+      val accConcepts = bufferSet.acceptations.collect { case acc if acc.word == wordId => acc.concept }.toSet
+      val allConcepts = set.foldLeft(accConcepts)((set, elem) => set ++ elem._1)
       val lang = "ja"
-      val alphabet = kanjiAlphabet
-      array += WordEntry(concepts, wordId, lang, alphabet, str)
-    }
+      val kanaStr = set.head._2.map(index => bufferSet.kanjiKanaCorrelations(index)._2).map(bufferSet.symbolArrays).mkString("")
+      array += WordEntry(allConcepts, wordId, lang, kanaAlphabet, kanaStr)
 
+      for ((concepts, vector) <- set) {
+        val kanjiStr = vector.map(index => bufferSet.kanjiKanaCorrelations(index)._1).map(bufferSet.symbolArrays).mkString("")
+        array += WordEntry(concepts, wordId, lang, kanjiAlphabet, kanjiStr)
+      }
+    }
     array.toSet
   }
 

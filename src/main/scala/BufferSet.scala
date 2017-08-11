@@ -91,17 +91,4 @@ class BufferSet {
         (maxWord, maxConcept)
     }
   }
-
-  def accRepresentationsMap: Map[(Int /* word id */, String), Set[Int] /* concepts */] = {
-    jaWordCorrelations.foldLeft(Map[(Int, String), Set[Int]]()) { (map, jaWordCorr) =>
-      val wordId = jaWordCorr._1
-      val newEntries = for (setEntry <- jaWordCorr._2) yield {
-        val concepts = setEntry._1
-        val str = setEntry._2.map(index => symbolArrays(kanjiKanaCorrelations(index)._1)).mkString("")
-        ((wordId, str), concepts)
-      }
-
-      map ++ newEntries
-    }
-  }
 }
