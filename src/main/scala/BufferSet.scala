@@ -2,6 +2,7 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
+case class BunchConcept(bunch: Int, concept: Int)
 case class BunchWord(bunchConcept: Int, word: Int)
 
 object InvalidRegister {
@@ -15,6 +16,7 @@ class BufferSet {
   val wordRepresentations = ArrayBuffer[WordRepresentation]()
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
+  val bunchConcepts = ArrayBuffer[BunchConcept]()
   val bunchWords = ArrayBuffer[BunchWord]()
   val conversions = scala.collection.mutable.Set[Conversion]()
 

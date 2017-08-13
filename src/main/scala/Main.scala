@@ -315,7 +315,7 @@ object Main {
   /**
     * Convert from old database schema to the new database schema
     */
-  def convertWords(oldWords: Iterable[OldWord], oldWordPronunciations: Map[Int /* old word id */, IndexedSeq[OldPronunciation]])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Int /* New word id */] = {
+  def convertWords(oldWords: Iterable[OldWord], oldWordPronunciations: Map[Int /* old word id */, IndexedSeq[OldPronunciation]])(implicit bufferSet: BufferSet): Map[Int /* old word id */, Set[Int /* New Acceptation index */]] = {
     var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
     wordCount += 1
     conceptCount += 1
@@ -479,10 +479,16 @@ object Main {
       bufferSet.jaWordCorrelations(oldNewMap(oldWordId)) = set + ((conceptSet, newSeq.toVector))
     }
 
-    oldNewMap.toMap
+    oldWordAccMap.toMap
   }
 
-  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldNewWordIdMap: Map[Int, Int])(implicit bufferSet: BufferSet): Unit = {
+  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldWordAccMap: Map[Int, Set[Int]])(implicit bufferSet: BufferSet): Unit = {
+
+    object listChildTypes {
+      val word = 0
+      val list = 5
+    }
+
     val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
     var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
     wordCount += 1
@@ -527,8 +533,29 @@ object Main {
       println(s"Reused words: ${reusedWords.toList}")
     } while (false)
 
+    // Look for the list with title "lists conceptuales". This must be treated in an special way assuming that sublists are generic concepts including more concrete ones.
+    // The content of the sublists will be registered by their concept and not by their word or acceptation.
+    val rootConceptLists = oldLists.collect { case (listId, name) if name == "listas conceptuales" => listId }
+    if (rootConceptLists.size == 1) {
+      val rootConceptListId = rootConceptLists.head
+
+      val conceptLists = for (listChild <- listChildRegisters if listChild.listId == rootConceptListId && listChild.childType == listChildTypes.list) yield {
+        listChild.childId
+      }
+
+      for {
+        listId <- conceptLists
+        listChild <- listChildRegisters if listChild.listId == listId && listChild.childType == listChildTypes.word
+        (bunch, oldListId, _, _) <- lists if oldListId == listId
+        accIndex <- oldWordAccMap(listChild.childId)
+      } {
+        val concept = bufferSet.acceptations(accIndex).concept
+        bufferSet.bunchConcepts += BunchConcept(bunch, concept)
+      }
+    }
+
     for (listChildRegister <- listChildRegisters if listChildRegister.childType == 0) {
-      val jaWord = oldNewWordIdMap(listChildRegister.childId)
+      val jaWord = bufferSet.acceptations(oldWordAccMap(listChildRegister.childId).head).word
       val listConcept = lists.collectFirst {
         case (concept, listId, _, _) if listId == listChildRegister.listId => concept
       }.get
@@ -611,21 +638,15 @@ object Main {
     }
 
     val sqliteDatabaseReader = new SQLiteDatabaseReader(filePath)
-    val oldNewWordIdMap = convertWords(
+    val oldWordAccMap = convertWords(
       sqliteDatabaseReader.readOldWords,
       sqliteDatabaseReader.readOldWordPronunciations
     )
     convertBunches(
       sqliteDatabaseReader.readOldLists,
       sqliteDatabaseReader.readOldListChildren,
-      oldNewWordIdMap
+      oldWordAccMap
     )
-
-    // Added temporal for debugging purposes
-    val kakuKanji = "書"
-    val kakuKanjiIndex = bufferSet.symbolArrays.indexOf(kakuKanji)
-    val kakuKanas = bufferSet.kanjiKanaCorrelations.collect { case conv if conv._1 == kakuKanjiIndex => bufferSet.symbolArrays(conv._2) }
-    println(s"For kanji $kakuKanji following pronunciations are found: $kakuKanas")
 
     val fileName = "export.sdb"
     val obs = new OutputBitStream(new FileOutputStream(fileName))
@@ -652,6 +673,52 @@ object Main {
     }
     finally {
       outStream2.close()
+    }
+
+    val outStream3 = new PrintWriter(new FileOutputStream("ConceptualBunches.csv"))
+    try {
+      val bunches = bufferSet.bunchConcepts.foldLeft(Set[Int]()) { case (set, BunchConcept(bunch, _)) =>
+        set + bunch
+      }
+
+      def sortedSpanishWordsFromConcepts(concepts: Set[Int]) = {
+        val bunchAcceptations = concepts.flatMap(bunch => bufferSet.acceptations.filter(_.concept == bunch))
+
+        val accStrings = bunchAcceptations.foldLeft(Set[(Acceptation, Vector[String])]()) { (set, acc) =>
+          val strs = bufferSet.wordRepresentations.filter(repr => repr.word == acc.word && repr.alphabet == esAlphabet).map(repr => bufferSet.symbolArrays(repr.symbolArray)).sorted.toVector
+          if (strs.isEmpty) set
+          else set + ((acc, strs))
+        }
+
+        accStrings.toVector.sortWith { case ((_, strs1), (_, strs2)) => scala.math.Ordering.String.lt(strs1.head, strs2.head) }
+      }
+
+      val titles = sortedSpanishWordsFromConcepts(bunches)
+
+      for ((acc, title) <- titles) {
+        outStream3.println(title.mkString(", "))
+
+        val concepts = bufferSet.bunchConcepts.filter(_.bunch == acc.concept).map(_.concept).toSet
+        val words = concepts.flatMap(bunch =>
+          bufferSet.acceptations.collect { case acc if acc.concept == bunch => acc.word }.toSet
+        )
+
+        val wordStrings = words.foldLeft(Set[String]()) { (set, word) =>
+          val strOpt = bufferSet.wordRepresentations.collectFirst {
+            case repr if repr.word == word && repr.alphabet == esAlphabet =>
+              bufferSet.symbolArrays(repr.symbolArray)
+          }
+
+          set ++ strOpt
+        }
+
+        for (str <- wordStrings.toVector.sorted) {
+          outStream3.println(s"  $str")
+        }
+      }
+    }
+    finally {
+      outStream3.close()
     }
   }
 }
