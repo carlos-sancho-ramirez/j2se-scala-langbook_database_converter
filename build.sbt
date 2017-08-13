@@ -1,4 +1,6 @@
-name := "Langbook database v3 jdbc reader"
+name := "Langbook Database Converter"
+
+description := "Program that reads a Langbook SQLite database (version 3) and transforms it to a Streamed database for Langbook"
 
 version := "1.0"
 
