@@ -2,8 +2,6 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
-case class BunchConcept(bunch: Int, concept: Int)
-case class BunchAcceptation(bunch: Int, acc: Int)
 
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
@@ -16,8 +14,8 @@ class BufferSet {
   val wordRepresentations = ArrayBuffer[WordRepresentation]()
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
-  val bunchConcepts = ArrayBuffer[BunchConcept]()
-  val bunchAcceptations = ArrayBuffer[BunchAcceptation]()
+  val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
+  val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
   val conversions = scala.collection.mutable.Set[Conversion]()
 
   // This is currently really specific for Japanese, this must be adapted for any alphabet
@@ -31,7 +29,7 @@ class BufferSet {
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
   override def hashCode: Int = {
-    symbolArrays.length + acceptations.length + bunchAcceptations.length
+    symbolArrays.length + acceptations.length + bunchAcceptations.size
   }
 
   override def equals(other: Any): Boolean = {
@@ -87,11 +85,22 @@ class BufferSet {
   def fullCharSet: Array[Char] = charCountMap.toArray.sortWith((a,b) => a._2 > b._2).map(_._1)
 
   def maxWordAndConceptIndexes: (Int, Int) = {
-    acceptations.foldLeft((-1, -1)) {
+    val (maxWordFromAcceptations, maxConceptFromAcceptations) = acceptations.foldLeft((-1, -1)) {
       case ((word, concept), acc) =>
         val maxWord = if (acc.word > word) acc.word else word
         val maxConcept = if (acc.concept > concept) acc.concept else concept
         (maxWord, maxConcept)
     }
+
+    val maxConceptFromBunchConcepts = bunchConcepts.foldLeft(-1) { case (max, (bunch, concepts)) =>
+      val thisMax = (concepts + bunch).max
+      if (thisMax > max) thisMax
+      else max
+    }
+
+    val maxConceptFromBunchAcceptations = (bunchAcceptations.keySet + (-1)).max
+
+    val maxConcept = Set(maxConceptFromAcceptations, maxConceptFromBunchConcepts, maxConceptFromBunchAcceptations).max
+    (maxWordFromAcceptations, maxConcept)
   }
 }

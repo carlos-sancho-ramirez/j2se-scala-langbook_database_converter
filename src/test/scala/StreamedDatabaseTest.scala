@@ -178,41 +178,67 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     checkWriteAndRead(sourceSet)
   }
 
-  it should "match on write and read bunches" in {
+  it should "match on write and read concept bunches" in {
     val sourceSet = new BufferSet()
 
-    val colorSymbolArray = sourceSet.addSymbolArray("color")
-    val redSymbolArray = sourceSet.addSymbolArray("red")
-    val greenSymbolArray = sourceSet.addSymbolArray("green")
-    val blueSymbolArray = sourceSet.addSymbolArray("blue")
+    val (_, lastConcept) = sourceSet.maxWordAndConceptIndexes
+
+    val ratConcept = lastConcept + 1
+    val colorConcept = lastConcept + 2
+    val redConcept = lastConcept + 3
+    val greenConcept = lastConcept + 4
+    val blueConcept = lastConcept + 5
+    val animalConcept = lastConcept + 6
+
+    sourceSet.bunchConcepts(colorConcept) =
+        Set(redConcept, greenConcept, blueConcept)
+    sourceSet.bunchConcepts(animalConcept) = Set(ratConcept)
+
+    checkWriteAndRead(sourceSet)
+  }
+
+  it should "match on write and read acceptation bunches" in {
+    val sourceSet = new BufferSet()
+
+    val verbSymbolArray = sourceSet.addSymbolArray("verb")
+    val runSymbolArray = sourceSet.addSymbolArray("red")
+    val jumpSymbolArray = sourceSet.addSymbolArray("green")
+
+    val countrySymbolArray = sourceSet.addSymbolArray("country")
+    val japanSymbolArray = sourceSet.addSymbolArray("japan")
 
     val (lastWord, lastConcept) = sourceSet.maxWordAndConceptIndexes
 
-    val colorConcept = lastConcept + 1
-    val colorWord = lastWord + 1
-    val redWord = lastWord + 2
-    val greenWord = lastWord + 3
-    val blueWord = lastWord + 4
+    val verbConcept = lastConcept + 1
+    val runConcept = lastConcept + 2
+    val jumpConcept = lastConcept + 3
+    val countryConcept = lastConcept + 4
+    val japanConcept = lastConcept + 5
+
+    val verbWord = lastWord + 1
+    val runWord = lastWord + 2
+    val jumpWord = lastWord + 3
+    val countryWord = lastWord + 4
+    val japanWord = lastWord + 5
 
     sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(colorWord, Main.enAlphabet, colorSymbolArray),
-      WordRepresentation(redWord, Main.enAlphabet, redSymbolArray),
-      WordRepresentation(greenWord, Main.enAlphabet, greenSymbolArray),
-      WordRepresentation(blueWord, Main.enAlphabet, blueSymbolArray)
+      WordRepresentation(verbWord, Main.enAlphabet, verbSymbolArray),
+      WordRepresentation(runWord, Main.enAlphabet, runSymbolArray),
+      WordRepresentation(jumpWord, Main.enAlphabet, jumpSymbolArray),
+      WordRepresentation(countryWord, Main.enAlphabet, countrySymbolArray),
+      WordRepresentation(japanWord, Main.enAlphabet, japanSymbolArray)
     )
 
     sourceSet.acceptations ++= Vector(
-      Acceptation(colorWord, colorConcept),
-      Acceptation(redWord, lastConcept + 2),
-      Acceptation(greenWord, lastConcept + 3),
-      Acceptation(blueWord, lastConcept + 4)
+      Acceptation(verbWord, verbConcept),
+      Acceptation(runWord, runConcept),
+      Acceptation(jumpWord, jumpConcept),
+      Acceptation(japanWord, japanConcept),
+      Acceptation(countryWord, countryConcept)
     )
 
-    sourceSet.bunchAcceptations ++= Vector(
-      BunchAcceptation(colorConcept, redWord),
-      BunchAcceptation(colorConcept, greenWord),
-      BunchAcceptation(colorConcept, blueWord)
-    )
+    sourceSet.bunchAcceptations(verbConcept) = Set(runConcept, jumpConcept)
+    sourceSet.bunchAcceptations(countryConcept) = Set(japanConcept)
 
     checkWriteAndRead(sourceSet)
   }

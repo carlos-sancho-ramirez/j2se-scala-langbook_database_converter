@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, InputBitStream}
+import sword.bitstream.{HuffmanTable, InputBitStream}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -7,22 +7,26 @@ object StreamedDatabaseReader {
 
   def readSymbolArrays(symbolArrays: ArrayBuffer[String], ibs: InputBitStream): Unit = {
 
-    // Read Huffman table for chars
-    val huffmanTable = ibs.readHuffmanTable[Char](() => ibs.readChar())
-
-    // Read Symbol array length Huffman table
-    val symbolArraysLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
-
-    // Read all symbol arrays
+    // Read the number of symbol arrays
     val symbolArraysLength = ibs.readNaturalNumber().toInt
-    for (i <- 0 until symbolArraysLength) {
-      val length = ibs.readHuffmanSymbol(symbolArraysLengthHuffmanTable)
-      val str = new StringBuilder()
-      for (j <- 0 until length) {
-        str.append(ibs.readHuffmanSymbol(huffmanTable))
-      }
 
-      symbolArrays += str.toString
+    if (symbolArraysLength > 0) {
+      // Read Huffman table for chars
+      val huffmanTable = ibs.readHuffmanTable[Char](() => ibs.readChar())
+
+      // Read Symbol array length Huffman table
+      val symbolArraysLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+
+      // Read all symbol arrays
+      for (i <- 0 until symbolArraysLength) {
+        val length = ibs.readHuffmanSymbol(symbolArraysLengthHuffmanTable)
+        val str = new StringBuilder()
+        for (j <- 0 until length) {
+          str.append(ibs.readHuffmanSymbol(huffmanTable))
+        }
+
+        symbolArrays += str.toString
+      }
     }
   }
 
@@ -90,18 +94,38 @@ object StreamedDatabaseReader {
 
     // Export bunchConcepts
     val bunchConceptsLength = ibs.readNaturalNumber().toInt
+    val bunchConceptsLengthTable: HuffmanTable[Integer] = {
+      if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber().toInt)
+      else null
+    }
+
     for (i <- 0 until bunchConceptsLength) {
       val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
-      val concept = ibs.readRangedNumber(minValidConcept, maxConcept)
-      bufferSet.bunchConcepts += BunchConcept(bunch, concept)
+      val iterator = ibs.readRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept).iterator
+      val concepts = scala.collection.mutable.Set[Int]()
+      while (iterator.hasNext) {
+        concepts += iterator.next()
+      }
+
+      bufferSet.bunchConcepts(bunch) = concepts.toSet
     }
 
     // Export bunchAcceptations
     val bunchAcceptationsLength = ibs.readNaturalNumber().toInt
+    val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
+      if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt))
+      else null
+    }
+
     for (i <- 0 until bunchAcceptationsLength) {
       val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
-      val acc = ibs.readRangedNumber(0, acceptationsLength - 1)
-      bufferSet.bunchAcceptations += BunchAcceptation(bunch, acc)
+      val iterator = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1).iterator
+      val acceptations = scala.collection.mutable.Set[Int]()
+      while (iterator.hasNext) {
+        acceptations += iterator.next()
+      }
+
+      bufferSet.bunchAcceptations(bunch) = acceptations.toSet
     }
 
     ibs.close()

@@ -5,38 +5,42 @@ object StreamedDatabaseWriter {
 
   def writeSymbolArrays(symbolArrays: scala.collection.IndexedSeq[String], obs: OutputBitStream): Unit = {
 
-    val charCountMap = symbolArrays.foldLeft(scala.collection.mutable.Map[Char, Int]()) {
-      (map, string) =>
-        for (char <- string) {
-          map(char) = map.getOrElse(char, 0) + 1
-        }
-        map
-    }.toMap
-
-    // Include charSet Huffman table
-    val huffmanTable = DefinedHuffmanTable.withFrequencies(
-      scala.collection.JavaConverters.mapAsJavaMap(
-        charCountMap.mapValues(Integer.valueOf)))
-    obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
-
-    // Include suitable bit alignment for symbolArray lengths Huffman table
-    val symbolArrayLengthFreqMap = symbolArrays.foldLeft(new java.util.HashMap[Int, java.lang.Integer]()) { case (map, array) =>
-      val arrayLength = array.length
-      val newValue = if (map.containsKey(arrayLength)) map.get(arrayLength) + 1 else 1
-      map.put(arrayLength, newValue)
-      map
-    }
-    val symbolArrayLengthHuffmanTable = DefinedHuffmanTable.withFrequencies(symbolArrayLengthFreqMap)
-    obs.writeHuffmanTable[Int](symbolArrayLengthHuffmanTable, length => obs.writeNaturalNumber(length))
-
-    // Include all symbol arrays
+    // Include the number of symbol arrays
     val symbolArraysLength = symbolArrays.length
     println(s"Exporting all strings ($symbolArraysLength in total)")
     obs.writeNaturalNumber(symbolArraysLength)
-    for (array <- symbolArrays) {
-      obs.writeHuffmanSymbol(symbolArrayLengthHuffmanTable, array.length)
-      for (ch <- array) {
-        obs.writeHuffmanSymbol(huffmanTable, ch)
+
+    if (symbolArraysLength > 0) {
+      val charCountMap = symbolArrays.foldLeft(scala.collection.mutable.Map[Char, Int]()) {
+        (map, string) =>
+          for (char <- string) {
+            map(char) = map.getOrElse(char, 0) + 1
+          }
+          map
+      }.toMap
+
+      // Include charSet Huffman table
+      val huffmanTable = DefinedHuffmanTable.withFrequencies(
+        scala.collection.JavaConverters.mapAsJavaMap(
+          charCountMap.mapValues(Integer.valueOf)))
+      obs.writeHuffmanTable(huffmanTable, ch => obs.writeChar(ch))
+
+      // Include suitable bit alignment for symbolArray lengths Huffman table
+      val symbolArrayLengthFreqMap = symbolArrays.foldLeft(new java.util.HashMap[Int, java.lang.Integer]()) { case (map, array) =>
+        val arrayLength = array.length
+        val newValue = if (map.containsKey(arrayLength)) map.get(arrayLength) + 1 else 1
+        map.put(arrayLength, newValue)
+        map
+      }
+      val symbolArrayLengthHuffmanTable = DefinedHuffmanTable.withFrequencies(symbolArrayLengthFreqMap)
+      obs.writeHuffmanTable[Int](symbolArrayLengthHuffmanTable, length => obs.writeNaturalNumber(length))
+
+      // Include all symbol arrays
+      for (array <- symbolArrays) {
+        obs.writeHuffmanSymbol(symbolArrayLengthHuffmanTable, array.length)
+        for (ch <- array) {
+          obs.writeHuffmanSymbol(huffmanTable, ch)
+        }
       }
     }
   }
@@ -157,17 +161,57 @@ object StreamedDatabaseWriter {
     // Export bunchConcepts
     val bunchConceptsLength = bufferSet.bunchConcepts.size
     obs.writeNaturalNumber(bunchConceptsLength)
-    for (bunchConcept <- bufferSet.bunchConcepts) {
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunchConcept.bunch)
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunchConcept.concept)
+
+    val bunchConceptsLengthTable = if (bunchConceptsLength > 0) {
+      val bunchConceptsLengthFrecMap = new java.util.HashMap[Integer, Integer]()
+      for ((_, concepts) <- bufferSet.bunchConcepts) {
+        val length = concepts.size
+        val currentCount = bunchConceptsLengthFrecMap.getOrDefault(length, 0)
+        bunchConceptsLengthFrecMap.put(length, currentCount + 1)
+      }
+
+      val table = DefinedHuffmanTable.withFrequencies(bunchConceptsLengthFrecMap)
+      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol.toLong))
+      table
+    }
+    else null
+
+    for ((bunch, concepts) <- bufferSet.bunchConcepts) {
+      val javaSet = new java.util.HashSet[Integer]()
+      for (concept <- concepts) {
+        javaSet.add(concept)
+      }
+
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
+      obs.writeRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept, javaSet)
     }
 
     // Export bunchAcceptations
     val bunchAcceptationsLength = bufferSet.bunchAcceptations.size
     obs.writeNaturalNumber(bunchAcceptationsLength)
-    for (bunchAcceptation <- bufferSet.bunchAcceptations) {
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunchAcceptation.bunch)
-      obs.writeRangedNumber(0, acceptationsLength - 1, bunchAcceptation.acc)
+
+    val bunchAcceptationsLengthTable = if (bunchAcceptationsLength > 0) {
+      val bunchAcceptationsLengthFrecMap = new java.util.HashMap[Integer, Integer]()
+      for ((_, accs) <- bufferSet.bunchAcceptations) {
+        val length = accs.size
+        val currentCount = bunchAcceptationsLengthFrecMap.getOrDefault(length, 0)
+        bunchAcceptationsLengthFrecMap.put(length, currentCount + 1)
+      }
+
+      val table = DefinedHuffmanTable.withFrequencies(bunchAcceptationsLengthFrecMap)
+      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol.toLong))
+      table
+    }
+    else null
+
+    for ((bunch, accs) <- bufferSet.bunchAcceptations) {
+      val javaSet = new java.util.HashSet[Integer]()
+      for (acc <- accs) {
+        javaSet.add(acc)
+      }
+
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
+      obs.writeRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1, javaSet)
     }
 
     obs.close()

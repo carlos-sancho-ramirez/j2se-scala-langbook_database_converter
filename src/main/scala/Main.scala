@@ -554,7 +554,7 @@ object Main {
         accIndex <- oldWordAccMap(listChild.childId)
       } {
         val concept = bufferSet.acceptations(accIndex).concept
-        bufferSet.bunchConcepts += BunchConcept(bunch, concept)
+        bufferSet.bunchConcepts(bunch) = bufferSet.bunchConcepts.getOrElse(bunch, Set[Int]()) + concept
       }
     }
 
@@ -566,7 +566,7 @@ object Main {
         case (concept, listId, _, _) if listId == listChildRegister.listId => concept
       }.get
 
-      bufferSet.bunchAcceptations += BunchAcceptation(listConcept, accIndex)
+      bufferSet.bunchAcceptations(listConcept) = bufferSet.bunchAcceptations.getOrElse(listConcept, Set[Int]()) + accIndex
     }
   }
 
@@ -666,16 +666,14 @@ object Main {
 
     val outStream3 = new PrintWriter(new FileOutputStream("ConceptualBunches.csv"))
     try {
-      val bunches = bufferSet.bunchConcepts.foldLeft(Set[Int]()) { case (set, BunchConcept(bunch, _)) =>
-        set + bunch
-      }
+      val bunches = bufferSet.bunchConcepts.keySet.toSet
 
       val titles = sortedSpanishWordsFromConcepts(bunches)
 
       for ((acc, title) <- titles) {
         outStream3.println(title.mkString(", "))
 
-        val concepts = bufferSet.bunchConcepts.filter(_.bunch == acc.concept).map(_.concept).toSet
+        val concepts = bufferSet.bunchConcepts.getOrElse(acc.concept, Set[Int]())
         val words = concepts.flatMap(bunch =>
           bufferSet.acceptations.collect { case acc if acc.concept == bunch => acc.word }.toSet
         )
@@ -700,16 +698,13 @@ object Main {
 
     val outStream4 = new PrintWriter(new FileOutputStream("AcceptationBunches.csv"))
     try {
-      val bunches = bufferSet.bunchAcceptations.foldLeft(Set[Int]()) { case (set, BunchAcceptation(bunch, _)) =>
-        set + bunch
-      }
-
+      val bunches = bufferSet.bunchAcceptations.keySet.toSet
       val titles = sortedSpanishWordsFromConcepts(bunches)
 
       for ((bunchAcc, title) <- titles) {
         outStream4.println(title.mkString(", "))
 
-        val acceptations = bufferSet.bunchAcceptations.filter(_.bunch == bunchAcc.concept).map(_.acc).toSet
+        val acceptations = bufferSet.bunchAcceptations.getOrElse(bunchAcc.concept, Set[Int]())
         val wordStrings = acceptations.foldLeft(Set[String]()) { (words, accIndex) =>
           val acc = bufferSet.acceptations(accIndex)
           val kanjiSetOpt = bufferSet.jaWordCorrelations.get(acc.word).flatMap { set =>
