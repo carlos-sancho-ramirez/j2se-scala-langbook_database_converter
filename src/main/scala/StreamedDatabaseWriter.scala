@@ -154,12 +154,20 @@ object StreamedDatabaseWriter {
       }
     }
 
-    // Export bunchWords
-    val bunchWordsLength = bufferSet.bunchWords.size
-    obs.writeNaturalNumber(bunchWordsLength)
-    for (bunchWord <- bufferSet.bunchWords) {
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunchWord.bunchConcept)
-      obs.writeRangedNumber(minValidWord, maxWord, bunchWord.word)
+    // Export bunchConcepts
+    val bunchConceptsLength = bufferSet.bunchConcepts.size
+    obs.writeNaturalNumber(bunchConceptsLength)
+    for (bunchConcept <- bufferSet.bunchConcepts) {
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunchConcept.bunch)
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunchConcept.concept)
+    }
+
+    // Export bunchAcceptations
+    val bunchAcceptationsLength = bufferSet.bunchAcceptations.size
+    obs.writeNaturalNumber(bunchAcceptationsLength)
+    for (bunchAcceptation <- bufferSet.bunchAcceptations) {
+      obs.writeRangedNumber(minValidConcept, maxConcept, bunchAcceptation.bunch)
+      obs.writeRangedNumber(0, acceptationsLength - 1, bunchAcceptation.acc)
     }
 
     obs.close()

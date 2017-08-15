@@ -533,15 +533,19 @@ object Main {
       println(s"Reused words: ${reusedWords.toList}")
     } while (false)
 
+    val listsToIgnore = mutable.Set[Int]()
+
     // Look for the list with title "lists conceptuales". This must be treated in an special way assuming that sublists are generic concepts including more concrete ones.
     // The content of the sublists will be registered by their concept and not by their word or acceptation.
     val rootConceptLists = oldLists.collect { case (listId, name) if name == "listas conceptuales" => listId }
     if (rootConceptLists.size == 1) {
       val rootConceptListId = rootConceptLists.head
+      listsToIgnore += rootConceptListId
 
       val conceptLists = for (listChild <- listChildRegisters if listChild.listId == rootConceptListId && listChild.childType == listChildTypes.list) yield {
         listChild.childId
       }
+      listsToIgnore ++= conceptLists
 
       for {
         listId <- conceptLists
@@ -554,43 +558,16 @@ object Main {
       }
     }
 
-    for (listChildRegister <- listChildRegisters if listChildRegister.childType == 0) {
-      val jaWord = bufferSet.acceptations(oldWordAccMap(listChildRegister.childId).head).word
+    for {
+      listChildRegister <- listChildRegisters if listChildRegister.childType == 0 && !listsToIgnore(listChildRegister.listId)
+      accIndex <- oldWordAccMap(listChildRegister.childId)
+    } {
       val listConcept = lists.collectFirst {
         case (concept, listId, _, _) if listId == listChildRegister.listId => concept
       }.get
 
-      bufferSet.bunchWords += BunchWord(listConcept, jaWord)
+      bufferSet.bunchAcceptations += BunchAcceptation(listConcept, accIndex)
     }
-
-    // This is here just for testing purposes and should be removed
-    do {
-      val transitiveVerbSymbolArray = bufferSet.symbolArrays.indexOf("verbo transitivo")
-      val transitiveVerbWord = bufferSet.wordRepresentations.collectFirst {
-        case repr if repr.symbolArray == transitiveVerbSymbolArray => repr.word
-      }.get
-      val transitiveVerbConcept = bufferSet.acceptations.collectFirst {
-        case acc if acc.word == transitiveVerbWord => acc.concept
-      }.get
-      val r = bufferSet.bunchWords.collect {
-        case bunchWord if bunchWord.bunchConcept == transitiveVerbConcept => bunchWord.word
-      }
-
-      val wordsInList = r.map { wordId =>
-        val fromWordRepr = bufferSet.wordRepresentations.collectFirst {
-          case repr if repr.alphabet == kanaAlphabet && repr.word == wordId => bufferSet.symbolArrays(repr.symbolArray)
-        }
-
-        fromWordRepr.getOrElse {
-          val vector = bufferSet.jaWordCorrelations(wordId).head._2
-          vector
-            .map(index => bufferSet.kanjiKanaCorrelations(index)._2)
-            .map(bufferSet.symbolArrays).mkString("")
-        }
-      }.toList
-
-      println(s"Encontradas ${r.length} palabras en la lista 'verbo transitivo': $wordsInList")
-    } while(false)
   }
 
   case class WordEntry(concepts: Set[Int], word: Int, lang: String, alphabet: Int, str: String) {
@@ -675,22 +652,22 @@ object Main {
       outStream2.close()
     }
 
+    def sortedSpanishWordsFromConcepts(concepts: Set[Int]) = {
+      val bunchAcceptations = concepts.flatMap(bunch => bufferSet.acceptations.filter(_.concept == bunch))
+
+      val accStrings = bunchAcceptations.foldLeft(Set[(Acceptation, Vector[String])]()) { (set, acc) =>
+        val strs = bufferSet.wordRepresentations.filter(repr => repr.word == acc.word && repr.alphabet == esAlphabet).map(repr => bufferSet.symbolArrays(repr.symbolArray)).sorted.toVector
+        if (strs.isEmpty) set
+        else set + ((acc, strs))
+      }
+
+      accStrings.toVector.sortWith { case ((_, strs1), (_, strs2)) => scala.math.Ordering.String.lt(strs1.head, strs2.head) }
+    }
+
     val outStream3 = new PrintWriter(new FileOutputStream("ConceptualBunches.csv"))
     try {
       val bunches = bufferSet.bunchConcepts.foldLeft(Set[Int]()) { case (set, BunchConcept(bunch, _)) =>
         set + bunch
-      }
-
-      def sortedSpanishWordsFromConcepts(concepts: Set[Int]) = {
-        val bunchAcceptations = concepts.flatMap(bunch => bufferSet.acceptations.filter(_.concept == bunch))
-
-        val accStrings = bunchAcceptations.foldLeft(Set[(Acceptation, Vector[String])]()) { (set, acc) =>
-          val strs = bufferSet.wordRepresentations.filter(repr => repr.word == acc.word && repr.alphabet == esAlphabet).map(repr => bufferSet.symbolArrays(repr.symbolArray)).sorted.toVector
-          if (strs.isEmpty) set
-          else set + ((acc, strs))
-        }
-
-        accStrings.toVector.sortWith { case ((_, strs1), (_, strs2)) => scala.math.Ordering.String.lt(strs1.head, strs2.head) }
       }
 
       val titles = sortedSpanishWordsFromConcepts(bunches)
@@ -719,6 +696,45 @@ object Main {
     }
     finally {
       outStream3.close()
+    }
+
+    val outStream4 = new PrintWriter(new FileOutputStream("AcceptationBunches.csv"))
+    try {
+      val bunches = bufferSet.bunchAcceptations.foldLeft(Set[Int]()) { case (set, BunchAcceptation(bunch, _)) =>
+        set + bunch
+      }
+
+      val titles = sortedSpanishWordsFromConcepts(bunches)
+
+      for ((bunchAcc, title) <- titles) {
+        outStream4.println(title.mkString(", "))
+
+        val acceptations = bufferSet.bunchAcceptations.filter(_.bunch == bunchAcc.concept).map(_.acc).toSet
+        val wordStrings = acceptations.foldLeft(Set[String]()) { (words, accIndex) =>
+          val acc = bufferSet.acceptations(accIndex)
+          val kanjiSetOpt = bufferSet.jaWordCorrelations.get(acc.word).flatMap { set =>
+            val kanjiStrs = set.collect { case (conceptSet, vector) if conceptSet(acc.concept) =>
+              vector.map(index => bufferSet.symbolArrays(bufferSet.kanjiKanaCorrelations(index)._1)).mkString("")
+            }
+
+            if (kanjiStrs.isEmpty) None
+            else Some(kanjiStrs)
+          }
+
+          val strSet = kanjiSetOpt.getOrElse {
+            bufferSet.wordRepresentations.collect { case repr if repr.word == acc.word => bufferSet.symbolArrays(repr.symbolArray)}.toSet
+          }
+
+          words ++ strSet
+        }
+
+        for (str <- wordStrings.toVector.sorted) {
+          outStream4.println(s"  $str")
+        }
+      }
+    }
+    finally {
+      outStream4.close()
     }
   }
 }

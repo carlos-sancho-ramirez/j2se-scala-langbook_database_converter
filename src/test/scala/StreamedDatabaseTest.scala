@@ -208,10 +208,10 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       Acceptation(blueWord, lastConcept + 4)
     )
 
-    sourceSet.bunchWords ++= Vector(
-      BunchWord(colorConcept, redWord),
-      BunchWord(colorConcept, greenWord),
-      BunchWord(colorConcept, blueWord)
+    sourceSet.bunchAcceptations ++= Vector(
+      BunchAcceptation(colorConcept, redWord),
+      BunchAcceptation(colorConcept, greenWord),
+      BunchAcceptation(colorConcept, blueWord)
     )
 
     checkWriteAndRead(sourceSet)

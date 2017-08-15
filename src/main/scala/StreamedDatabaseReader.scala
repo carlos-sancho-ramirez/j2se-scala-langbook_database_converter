@@ -88,12 +88,20 @@ object StreamedDatabaseReader {
       }
     }
 
-    // Export bunchWords
-    val bunchWordsLength = ibs.readNaturalNumber().toInt
-    for (i <- 0 until bunchWordsLength) {
-      val bunchConcept = ibs.readRangedNumber(minValidConcept, maxConcept)
-      val word = ibs.readRangedNumber(minValidWord, maxWord)
-      bufferSet.bunchWords += BunchWord(bunchConcept, word)
+    // Export bunchConcepts
+    val bunchConceptsLength = ibs.readNaturalNumber().toInt
+    for (i <- 0 until bunchConceptsLength) {
+      val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val concept = ibs.readRangedNumber(minValidConcept, maxConcept)
+      bufferSet.bunchConcepts += BunchConcept(bunch, concept)
+    }
+
+    // Export bunchAcceptations
+    val bunchAcceptationsLength = ibs.readNaturalNumber().toInt
+    for (i <- 0 until bunchAcceptationsLength) {
+      val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val acc = ibs.readRangedNumber(0, acceptationsLength - 1)
+      bufferSet.bunchAcceptations += BunchAcceptation(bunch, acc)
     }
 
     ibs.close()
