@@ -626,13 +626,7 @@ object Main {
     )
 
     val fileName = "export.sdb"
-    val obs = new OutputBitStream(new FileOutputStream(fileName))
-    try {
-      StreamedDatabaseWriter.write(bufferSet, obs)
-    }
-    catch {
-      case _: IOException => System.err.println(s"Unable to write $fileName")
-    }
+    StreamedDatabaseWriter.write(bufferSet, fileName)
 
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {

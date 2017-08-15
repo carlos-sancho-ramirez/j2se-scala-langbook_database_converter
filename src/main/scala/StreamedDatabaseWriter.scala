@@ -1,3 +1,6 @@
+import java.io.{File, FileOutputStream, IOException, RandomAccessFile}
+import java.security.{DigestOutputStream, MessageDigest}
+
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
 import sword.bitstream.{DefinedHuffmanTable, OutputBitStream}
 
@@ -215,5 +218,53 @@ object StreamedDatabaseWriter {
     }
 
     obs.close()
+  }
+
+  def write(bufferSet: BufferSet, fileName: String): Unit = {
+    val file = new File(fileName)
+    val fos = new FileOutputStream(file)
+    try {
+      val header = Array(
+        'S'.toByte, 'D'.toByte, 'B'.toByte, 0.toByte)
+
+      fos.write(header)
+      fos.write(Array.ofDim[Byte](16))
+
+      val md = MessageDigest.getInstance("MD5")
+      val dos = new DigestOutputStream(fos, md)
+      val obs = new OutputBitStream(dos)
+      try {
+        write(bufferSet, obs)
+      }
+      finally {
+        try {
+          obs.close()
+        }
+        catch {
+          case _: IOException => // Nothing to worry
+        }
+
+        try {
+          fos.close()
+        }
+        catch {
+          case _: IOException => // Nothing to worry
+        }
+      }
+
+      // Adding the MD5 hash
+      val raf = new RandomAccessFile(file, "rw")
+      raf.write(header)
+      raf.write(md.digest())
+      raf.close()
+    }
+    finally {
+      try {
+        fos.close()
+      }
+      catch {
+        case _: IOException => // Nothing to be done
+      }
+    }
   }
 }
