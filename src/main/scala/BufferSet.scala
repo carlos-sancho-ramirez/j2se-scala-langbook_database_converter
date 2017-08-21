@@ -2,6 +2,7 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
+case class Agent(targetBunch: Int, sourceBunches: Set[Int])
 
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
@@ -28,6 +29,8 @@ class BufferSet {
   //val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
+  val agents = scala.collection.mutable.Set[Agent]()
+
   override def hashCode: Int = {
     symbolArrays.length + acceptations.length + bunchAcceptations.size
   }
@@ -42,7 +45,8 @@ class BufferSet {
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
       jaWordCorrelations == that.jaWordCorrelations &&
       bunchConcepts == that.bunchConcepts &&
-      bunchAcceptations == that.bunchAcceptations
+      bunchAcceptations == that.bunchAcceptations &&
+      agents == that.agents
     }
   }
 

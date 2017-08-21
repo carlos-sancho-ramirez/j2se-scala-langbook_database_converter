@@ -802,4 +802,51 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet1 shouldBe bufferSet2
   }
+
+  it should "include agents including all list children" in {
+    val substantiveListId = 54
+    val verbListId = 55
+    val transitiveListId = 56
+    val intransitiveListId = 57
+
+    val oldLists = Map(
+      substantiveListId -> "substantive",
+      verbListId -> "verb",
+      transitiveListId -> "transitive",
+      intransitiveListId -> "intransitive"
+    )
+
+    val listChildRegisters = Vector(
+      ListChildRegister(verbListId, transitiveListId, Main.listChildTypes.list),
+      ListChildRegister(verbListId, intransitiveListId, Main.listChildTypes.list)
+    )
+
+    val oldWordAccMap = Map[Int, Set[Int]]()
+    val bufferSet = new BufferSet()
+
+    Main.convertBunches(oldLists, listChildRegisters, oldWordAccMap)(bufferSet)
+
+    val verbSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf oldLists(verbListId)
+    val transitiveSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf oldLists(transitiveListId)
+    val intransitiveSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf oldLists(intransitiveListId)
+
+    val verbReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == verbSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
+    val transitiveReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == transitiveSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
+    val intransitiveReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == intransitiveSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
+
+    val verbWord = bufferSet.wordRepresentations(verbReprIndex).word
+    val transitiveWord = bufferSet.wordRepresentations(transitiveReprIndex).word
+    val intransitiveWord = bufferSet.wordRepresentations(intransitiveReprIndex).word
+
+    val verbAccIndex = bufferSet.acceptations.findUniqueIndexWhere(_.word == verbWord)
+    val transitiveAccIndex = bufferSet.acceptations.findUniqueIndexWhere(_.word == transitiveWord)
+    val intransitiveAccIndex = bufferSet.acceptations.findUniqueIndexWhere(_.word == intransitiveWord)
+
+    val verbConcept = bufferSet.acceptations(verbAccIndex).concept
+    val transitiveConcept = bufferSet.acceptations(transitiveAccIndex).concept
+    val intransitiveConcept = bufferSet.acceptations(intransitiveAccIndex).concept
+
+    val sourceBunches = Set(transitiveConcept, intransitiveConcept)
+    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches))
+  }
 }

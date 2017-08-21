@@ -482,12 +482,12 @@ object Main {
     oldWordAccMap.toMap
   }
 
-  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldWordAccMap: Map[Int, Set[Int]])(implicit bufferSet: BufferSet): Unit = {
+  object listChildTypes {
+    val word = 0
+    val list = 5
+  }
 
-    object listChildTypes {
-      val word = 0
-      val list = 5
-    }
+  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldWordAccMap: Map[Int, Set[Int]])(implicit bufferSet: BufferSet): Unit = {
 
     val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
     var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
@@ -567,6 +567,22 @@ object Main {
       }.get
 
       bufferSet.bunchAcceptations(listConcept) = bufferSet.bunchAcceptations.getOrElse(listConcept, Set[Int]()) + accIndex
+    }
+
+    for {
+      (listId,_) <- oldLists
+      (targetBunch, oldTargetListId, _, _) <- lists if oldTargetListId == listId
+    } {
+      val sources = (for {
+        listChildReg <- listChildRegisters if listChildReg.listId == listId && listChildReg.childType == listChildTypes.list
+        (bunch, oldListId, _, _) <- lists if oldListId == listChildReg.childId
+      } yield {
+        bunch
+      }).toSet
+
+      if (sources.nonEmpty) {
+        bufferSet.agents += Agent(targetBunch, sources)
+      }
     }
   }
 
