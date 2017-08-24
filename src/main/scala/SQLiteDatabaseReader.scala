@@ -15,6 +15,10 @@ case class ListChildRegister(listId: Int, childId: Int, childType: Int)
 
 case class OldPronunciation(kanji: String, kana: String)
 
+case class GrammarRuleRegister(form: String, ruleType: Int, pattern: String) {
+  def fromStart: Boolean = (ruleType & 1) != 0
+}
+
 class SQLiteDatabaseReader(val filePath: String) {
 
   def readOldWords: Iterable[OldWord] = {
@@ -213,5 +217,84 @@ class SQLiteDatabaseReader(val filePath: String) {
     }
 
     wordPronunciations.toMap
+  }
+
+  /**
+   * Schema of GrammarConstraintRegister include fields wordColumn and ruleType,
+   * but they are always 0 in the given database. Thus, they are ignored and the
+   * structure can be compacted to a simple Map.
+   *
+   * @return A map that maps the register id with its pattern.
+   *         This pattern must be understood as the compulsory pattern that the
+   *         words in the same list must follow at its end when written in kanji.
+   */
+  def readOldGrammarConstraints: Map[Int, String] = {
+    val result = scala.collection.mutable.Map[Int, String]()
+
+    val outStream = new PrintWriter(new FileOutputStream("GrammarConstraintRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM GrammarConstraintRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val id = resultSet.getInt("id")
+          val pattern = resultSet.getString("pattern")
+          val rowValues = s"$id,$pattern"
+          result(id) = pattern
+
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    result.toMap
+  }
+
+  def readOldGrammarRules: Map[Int, GrammarRuleRegister] = {
+    val result = scala.collection.mutable.Map[Int, GrammarRuleRegister]()
+
+    val outStream = new PrintWriter(new FileOutputStream("GrammarRuleRegister.csv"))
+    try {
+      val path = filePath
+      println("Connecting to database at " + path)
+      val connection = DriverManager.getConnection("jdbc:sqlite:" + path)
+      try {
+        val statement = connection.createStatement()
+        statement.setQueryTimeout(10) // 10 seconds
+        val resultSet = statement.executeQuery("SELECT * FROM GrammarRuleRegister")
+        var limit = 10000
+        while (limit > 0 && resultSet.next()) {
+          val id = resultSet.getInt("id")
+          val form = resultSet.getString("form")
+          val ruleType = resultSet.getInt("ruleType")
+          val pattern = resultSet.getString("pattern")
+          val rowValues = s"$id,$form,$ruleType,$pattern"
+          result(id) = GrammarRuleRegister(form, ruleType, pattern)
+
+          outStream.println(rowValues)
+          limit -= 1
+        }
+      }
+      finally {
+        connection.close()
+      }
+    }
+    finally {
+      outStream.close()
+    }
+
+    result.toMap
   }
 }

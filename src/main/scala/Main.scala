@@ -1,8 +1,8 @@
 import java.io._
 
-import scala.collection.mutable.ArrayBuffer
-import sword.bitstream.OutputBitStream
+import BufferSet.Correlation
 
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable
 
 object Main {
@@ -485,9 +485,16 @@ object Main {
   object listChildTypes {
     val word = 0
     val list = 5
+    val constraint = 8
+    val rule = 9
   }
 
-  def convertBunches(oldLists: Map[Int, String], listChildRegisters: Iterable[ListChildRegister], oldWordAccMap: Map[Int, Set[Int]])(implicit bufferSet: BufferSet): Unit = {
+  def convertBunches(
+      oldLists: Map[Int, String],
+      listChildRegisters: Iterable[ListChildRegister],
+      grammarConstraints: Map[Int, String],
+      grammarRules: Map[Int, GrammarRuleRegister],
+      oldWordAccMap: Map[Int, Set[Int]])(implicit bufferSet: BufferSet): Unit = {
 
     val lists = new ArrayBuffer[(Int /* Concept */, Int /* old list id */, Boolean /* new word */, String /* name */)]
     var (wordCount, conceptCount) = bufferSet.maxWordAndConceptIndexes
@@ -581,7 +588,30 @@ object Main {
       }).toSet
 
       if (sources.nonEmpty) {
-        bufferSet.agents += Agent(targetBunch, sources)
+        bufferSet.agents += Agent(targetBunch, sources, Map(), Map())
+      }
+    }
+
+    for {
+      (ruleId, rule) <- grammarRules
+      ListChildRegister(listId, childId, childType) <- listChildRegisters if childId == ruleId && childType == listChildTypes.rule
+    } {
+      val matchers = listChildRegisters.collect {
+        case reg if reg.listId == listId && reg.childType == listChildTypes.constraint => reg.childId
+      }
+
+      val bunchId = lists.collectFirst { case list if list._2 == listId => list._1 }.get
+      val agentMatcher: BufferSet.Correlation = {
+        if (matchers.size == 1) {
+          val constraintSymbolArrayIndex = bufferSet.addSymbolArray(grammarConstraints(matchers.head))
+          Map(kanjiAlphabet -> constraintSymbolArrayIndex)
+        }
+        else Map()
+      }
+
+      if (matchers.size < 2) {
+        val ruleSymbolArrayIndex = bufferSet.addSymbolArray(rule.pattern)
+        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex))
       }
     }
   }
@@ -638,6 +668,8 @@ object Main {
     convertBunches(
       sqliteDatabaseReader.readOldLists,
       sqliteDatabaseReader.readOldListChildren,
+      sqliteDatabaseReader.readOldGrammarConstraints,
+      sqliteDatabaseReader.readOldGrammarRules,
       oldWordAccMap
     )
 

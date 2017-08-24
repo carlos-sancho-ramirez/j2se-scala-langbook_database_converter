@@ -824,7 +824,7 @@ class MainTest extends FlatSpec with Matchers {
     val oldWordAccMap = Map[Int, Set[Int]]()
     val bufferSet = new BufferSet()
 
-    Main.convertBunches(oldLists, listChildRegisters, oldWordAccMap)(bufferSet)
+    Main.convertBunches(oldLists, listChildRegisters, Map(), Map(), oldWordAccMap)(bufferSet)
 
     val verbSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf oldLists(verbListId)
     val transitiveSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf oldLists(transitiveListId)
@@ -847,6 +847,69 @@ class MainTest extends FlatSpec with Matchers {
     val intransitiveConcept = bufferSet.acceptations(intransitiveAccIndex).concept
 
     val sourceBunches = Set(transitiveConcept, intransitiveConcept)
-    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches))
+    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map()))
+  }
+
+  it should "include agents for lists with grammar rules" in {
+    val substantiveListId = 134
+    val adjListId = 135
+    val iAdjListId = 13
+    val naAdjListId = 1101
+
+    val iAdjListName = "adjective with i"
+
+    val oldLists = Map(
+      substantiveListId -> "substantive",
+      adjListId -> "adjective",
+      iAdjListId -> iAdjListName,
+      naAdjListId -> "adjective with na"
+    )
+
+    val iConstraintId = 24
+    val naConstraintId = 25
+    val iStr = "い"
+    val naStr = "な"
+    val grammarConstraints = Map(
+      iConstraintId -> iStr,
+      naConstraintId -> naStr
+    )
+
+    val pastRuleId = 8
+    val kattaStr = "かった"
+    val grammarRules = Map(
+      pastRuleId -> GrammarRuleRegister("past", 0, kattaStr)
+    )
+
+    val listChildRegisters = Vector(
+      ListChildRegister(adjListId, iAdjListId, Main.listChildTypes.list),
+      ListChildRegister(adjListId, naAdjListId, Main.listChildTypes.list),
+      ListChildRegister(iAdjListId, iConstraintId, Main.listChildTypes.constraint),
+      ListChildRegister(naAdjListId, naConstraintId, Main.listChildTypes.constraint),
+      ListChildRegister(iAdjListId, pastRuleId, Main.listChildTypes.rule)
+    )
+
+    val oldWordAccMap = Map[Int, Set[Int]]()
+    val bufferSet = new BufferSet()
+
+    Main.convertBunches(oldLists, listChildRegisters, grammarConstraints, grammarRules, oldWordAccMap)(bufferSet)
+
+    val iSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf iStr
+    val kattaSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf kattaStr
+    bufferSet.symbolArrays indexOf naStr should be < 0
+
+    val iAdjSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf iAdjListName
+    val iAdjReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == iAdjSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
+    val iAdjWord = bufferSet.wordRepresentations(iAdjReprIndex).word
+    val iAdjAccIndex = bufferSet.acceptations.findUniqueIndexWhere(_.word == iAdjWord)
+    val iAdjConcept = bufferSet.acceptations(iAdjAccIndex).concept
+
+    val expectedAgent = Agent(
+      StreamedDatabaseConstants.nullBunchId,
+      Set(iAdjConcept),
+      Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
+      Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex)
+    )
+
+    bufferSet.agents.contains(expectedAgent) shouldBe true
   }
 }

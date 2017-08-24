@@ -2,10 +2,14 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
-case class Agent(targetBunch: Int, sourceBunches: Set[Int])
 
+case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation)
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
+}
+
+object BufferSet {
+  type Correlation = Map[Int /* Alphabet */, Int /* Symbol Array */]
 }
 
 /**
