@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{HuffmanTable, InputBitStream}
+import sword.bitstream.{HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -11,11 +11,15 @@ object StreamedDatabaseReader {
     val symbolArraysLength = ibs.readNaturalNumber().toInt
 
     if (symbolArraysLength > 0) {
+
+      val nat3Table = new NaturalNumberHuffmanTable(3)
+      val nat4Table = new NaturalNumberHuffmanTable(4)
+
       // Read Huffman table for chars
-      val huffmanTable = ibs.readHuffmanTable[Char](() => ibs.readChar())
+      val huffmanTable = ibs.readHuffmanTable[Char](() => ibs.readChar(), prev => (ibs.readHuffmanSymbol(nat4Table) + prev + 1).toChar)
 
       // Read Symbol array length Huffman table
-      val symbolArraysLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+      val symbolArraysLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readHuffmanSymbol(nat3Table).toInt + prev + 1)
 
       // Read all symbol arrays
       for (i <- 0 until symbolArraysLength) {
@@ -66,9 +70,9 @@ object StreamedDatabaseReader {
     // Export jaWordCorrelations
     val jaWordCorrelationsLength = ibs.readNaturalNumber().toInt
     if (jaWordCorrelationsLength > 0) {
-      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
-      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
-      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt)
+      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
+      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
+      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
 
       for (i <- 0 until jaWordCorrelationsLength) {
         val wordId = ibs.readRangedNumber(minValidWord, maxWord)
@@ -95,7 +99,7 @@ object StreamedDatabaseReader {
     // Export bunchConcepts
     val bunchConceptsLength = ibs.readNaturalNumber().toInt
     val bunchConceptsLengthTable: HuffmanTable[Integer] = {
-      if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber().toInt)
+      if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
       else null
     }
 
@@ -113,7 +117,7 @@ object StreamedDatabaseReader {
     // Export bunchAcceptations
     val bunchAcceptationsLength = ibs.readNaturalNumber().toInt
     val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
-      if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt))
+      if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt), prev => ibs.readNaturalNumber().toInt + prev + 1)
       else null
     }
 
