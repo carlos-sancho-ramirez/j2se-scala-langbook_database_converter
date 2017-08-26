@@ -7,11 +7,12 @@ import scala.collection.mutable
 
 object Main {
 
-  val enAlphabet = StreamedDatabaseConstants.minValidConcept
-  val esAlphabet = StreamedDatabaseConstants.minValidConcept + 1
-  val kanjiAlphabet = StreamedDatabaseConstants.minValidConcept + 2
-  val kanaAlphabet = StreamedDatabaseConstants.minValidConcept + 3
-  val roumajiAlphabet = StreamedDatabaseConstants.minValidConcept + 4
+  val alphabetConceptBase = StreamedDatabaseConstants.minValidConcept
+  val enAlphabet = alphabetConceptBase
+  val esAlphabet = alphabetConceptBase + 1
+  val kanjiAlphabet = alphabetConceptBase + 2
+  val kanaAlphabet = alphabetConceptBase + 3
+  val roumajiAlphabet = alphabetConceptBase + 4
 
   val alphabets = Vector(
     enAlphabet, // English
@@ -26,7 +27,7 @@ object Main {
   val minValidLanguage = 0
   val maxValidLanguage = 2
 
-  val languageConceptBase = alphabets.max + 1
+  val languageConceptBase = alphabetConceptBase + alphabets.max + 1
   val enLanguage = languageConceptBase
   val esLanguage = languageConceptBase + 1
   val jaLanguage = languageConceptBase + 2

@@ -93,7 +93,8 @@ class BufferSet {
   def fullCharSet: Array[Char] = charCountMap.toArray.sortWith((a,b) => a._2 > b._2).map(_._1)
 
   def maxWordAndConceptIndexes: (Int, Int) = {
-    val (maxWordFromAcceptations, maxConceptFromAcceptations) = acceptations.foldLeft((-1, -1)) {
+    val conceptMin = StreamedDatabaseConstants.minValidConcept - 1
+    val (maxWordFromAcceptations, maxConceptFromAcceptations) = acceptations.foldLeft((-1, conceptMin)) {
       case ((word, concept), acc) =>
         val maxWord = if (acc.word > word) acc.word else word
         val maxConcept = if (acc.concept > concept) acc.concept else concept

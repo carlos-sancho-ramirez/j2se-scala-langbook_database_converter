@@ -64,6 +64,9 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
   it should "match on write and read acceptations and its representations" in {
     val sourceSet = new BufferSet()
 
+    val wordBase = StreamedDatabaseConstants.minValidWord
+    val conceptBase = StreamedDatabaseConstants.minValidConcept
+
     sourceSet.symbolArrays ++= Vector(
       "大事", // 0
       "だいじ",
@@ -80,27 +83,27 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     )
 
     sourceSet.acceptations ++= Vector(
-      Acceptation(0, 0), //だいじ
-      Acceptation(1, 0), //たいせつ
-      Acceptation(2, 0), //importante
-      Acceptation(3, 1), //かみ(hear)
-      Acceptation(3, 2), //かみ(paper)
-      Acceptation(3, 3), //かみ(God)
-      Acceptation(4, 1), //cabello
-      Acceptation(5, 2), //papel
-      Acceptation(6, 3) //Dios
+      Acceptation(wordBase + 0, conceptBase + 0), //だいじ
+      Acceptation(wordBase + 1, conceptBase + 0), //たいせつ
+      Acceptation(wordBase + 2, conceptBase + 0), //importante
+      Acceptation(wordBase + 3, conceptBase + 1), //かみ(hear)
+      Acceptation(wordBase + 3, conceptBase + 2), //かみ(paper)
+      Acceptation(wordBase + 3, conceptBase + 3), //かみ(God)
+      Acceptation(wordBase + 4, conceptBase + 1), //cabello
+      Acceptation(wordBase + 5, conceptBase + 2), //papel
+      Acceptation(wordBase + 6, conceptBase + 3) //Dios
     )
 
     sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(0, Main.kanjiAlphabet, 0),
-      WordRepresentation(0, Main.kanaAlphabet, 1),
-      WordRepresentation(1, Main.kanjiAlphabet, 2),
-      WordRepresentation(1, Main.kanaAlphabet, 3),
-      WordRepresentation(2, Main.esAlphabet, 4),
-      WordRepresentation(3, Main.kanaAlphabet, 8),
-      WordRepresentation(4, Main.esAlphabet, 9),
-      WordRepresentation(5, Main.esAlphabet, 10),
-      WordRepresentation(6, Main.esAlphabet, 11)
+      WordRepresentation(wordBase + 0, Main.kanjiAlphabet, 0),
+      WordRepresentation(wordBase + 0, Main.kanaAlphabet, 1),
+      WordRepresentation(wordBase + 1, Main.kanjiAlphabet, 2),
+      WordRepresentation(wordBase + 1, Main.kanaAlphabet, 3),
+      WordRepresentation(wordBase + 2, Main.esAlphabet, 4),
+      WordRepresentation(wordBase + 3, Main.kanaAlphabet, 8),
+      WordRepresentation(wordBase + 4, Main.esAlphabet, 9),
+      WordRepresentation(wordBase + 5, Main.esAlphabet, 10),
+      WordRepresentation(wordBase + 6, Main.esAlphabet, 11)
     )
 
     checkWriteAndRead(sourceSet)
@@ -131,28 +134,31 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       "せつ"
     )
 
+    val wordBase = StreamedDatabaseConstants.minValidWord
+    val conceptBase = StreamedDatabaseConstants.minValidConcept
+
     sourceSet.acceptations ++= Vector(
-      Acceptation(0, 0), //だいじ
-      Acceptation(1, 0), //たいせつ
-      Acceptation(2, 0), //importante
-      Acceptation(3, 1), //かみ(hear)
-      Acceptation(3, 2), //かみ(paper)
-      Acceptation(3, 3), //かみ(God)
-      Acceptation(4, 1), //cabello
-      Acceptation(5, 2), //papel
-      Acceptation(6, 3) //Dios
+      Acceptation(wordBase, conceptBase), //だいじ
+      Acceptation(wordBase + 1, conceptBase), //たいせつ
+      Acceptation(wordBase + 2, conceptBase), //importante
+      Acceptation(wordBase + 3, conceptBase + 1), //かみ(hear)
+      Acceptation(wordBase + 3, conceptBase + 2), //かみ(paper)
+      Acceptation(wordBase + 3, conceptBase + 3), //かみ(God)
+      Acceptation(wordBase + 4, conceptBase + 1), //cabello
+      Acceptation(wordBase + 5, conceptBase + 2), //papel
+      Acceptation(wordBase + 6, conceptBase + 3) //Dios
     )
 
     sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(0, Main.kanjiAlphabet, 0),
-      WordRepresentation(0, Main.kanaAlphabet, 1),
-      WordRepresentation(1, Main.kanjiAlphabet, 2),
-      WordRepresentation(1, Main.kanaAlphabet, 3),
-      WordRepresentation(2, Main.esAlphabet, 4),
-      WordRepresentation(3, Main.kanaAlphabet, 8),
-      WordRepresentation(4, Main.esAlphabet, 9),
-      WordRepresentation(5, Main.esAlphabet, 10),
-      WordRepresentation(6, Main.esAlphabet, 11)
+      WordRepresentation(wordBase + 0, Main.kanjiAlphabet, 0),
+      WordRepresentation(wordBase + 0, Main.kanaAlphabet, 1),
+      WordRepresentation(wordBase + 1, Main.kanjiAlphabet, 2),
+      WordRepresentation(wordBase + 1, Main.kanaAlphabet, 3),
+      WordRepresentation(wordBase + 2, Main.esAlphabet, 4),
+      WordRepresentation(wordBase + 3, Main.kanaAlphabet, 8),
+      WordRepresentation(wordBase + 4, Main.esAlphabet, 9),
+      WordRepresentation(wordBase + 5, Main.esAlphabet, 10),
+      WordRepresentation(wordBase + 6, Main.esAlphabet, 11)
     )
 
     sourceSet.kanjiKanaCorrelations ++= Vector(
@@ -166,12 +172,12 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     )
 
     sourceSet.jaWordCorrelations ++= Vector(
-      (0, Set((Set(0), Vector(0, 2)))),
-      (1, Set((Set(0), Vector(1, 3)))),
-      (3, Set(
-        (Set(1), Vector(4)),
-        (Set(2), Vector(5)),
-        (Set(3), Vector(6))
+      (wordBase, Set((Set(conceptBase), Vector(0, 2)))),
+      (wordBase + 1, Set((Set(conceptBase), Vector(1, 3)))),
+      (wordBase + 3, Set(
+        (Set(conceptBase + 1), Vector(4)),
+        (Set(conceptBase + 2), Vector(5)),
+        (Set(conceptBase + 3), Vector(6))
       ))
     )
 
@@ -229,6 +235,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       WordRepresentation(japanWord, Main.enAlphabet, japanSymbolArray)
     )
 
+    val accBase = sourceSet.acceptations.size
     sourceSet.acceptations ++= Vector(
       Acceptation(verbWord, verbConcept),
       Acceptation(runWord, runConcept),
@@ -237,8 +244,8 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       Acceptation(countryWord, countryConcept)
     )
 
-    sourceSet.bunchAcceptations(verbConcept) = Set(runConcept, jumpConcept)
-    sourceSet.bunchAcceptations(countryConcept) = Set(japanConcept)
+    sourceSet.bunchAcceptations(verbConcept) = Set(accBase + 1, accBase +2)
+    sourceSet.bunchAcceptations(countryConcept) = Set(accBase + 3)
 
     checkWriteAndRead(sourceSet)
   }
