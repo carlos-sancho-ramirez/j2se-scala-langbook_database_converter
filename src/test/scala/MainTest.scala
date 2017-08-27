@@ -847,10 +847,10 @@ class MainTest extends FlatSpec with Matchers {
     val intransitiveConcept = bufferSet.acceptations(intransitiveAccIndex).concept
 
     val sourceBunches = Set(transitiveConcept, intransitiveConcept)
-    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map(), StreamedDatabaseConstants.nullBunchId))
+    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map(), StreamedDatabaseConstants.nullBunchId, fromStart = false))
   }
 
-  it should "include agents for lists with grammar rules" in {
+  it should "include agents for lists with suffix grammar rules" in {
     val substantiveListId = 134
     val adjListId = 135
     val iAdjListId = 13
@@ -915,7 +915,58 @@ class MainTest extends FlatSpec with Matchers {
       Set(iAdjConcept),
       Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
       Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex),
-      ruleConcept
+      ruleConcept,
+      fromStart = false
+    )
+
+    bufferSet.agents.contains(expectedAgent) shouldBe true
+  }
+
+  it should "include agents for lists with prefix grammar rules" in {
+    val substantiveListId = 134
+    val listName = "substantive"
+
+    val oldLists = Map(
+      substantiveListId -> listName
+    )
+
+    val ruleName = "honorífico"
+    val honorificRuleId = 8
+    val prefixStr = "お"
+    val grammarRules = Map(
+      honorificRuleId -> GrammarRuleRegister(ruleName, 1, prefixStr)
+    )
+
+    val listChildRegisters = Vector(
+      ListChildRegister(substantiveListId, honorificRuleId, Main.listChildTypes.rule),
+    )
+
+    val oldWordAccMap = Map[Int, Set[Int]]()
+    val bufferSet = new BufferSet()
+
+    Main.convertBunches(oldLists, listChildRegisters, Map(), grammarRules, oldWordAccMap)(bufferSet)
+
+    val prefixSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf prefixStr
+
+    val ruleSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf ruleName
+    val ruleWordReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.alphabet == Main.esAlphabet && repr.symbolArray == ruleSymbolArrayIndex)
+    val ruleWord = bufferSet.wordRepresentations(ruleWordReprIndex).word
+    val ruleAccIndex = bufferSet.acceptations.findUniqueIndexWhere(acc => acc.word == ruleWord)
+    val ruleConcept = bufferSet.acceptations(ruleAccIndex).concept
+
+    val substantiveSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf listName
+    val substantiveReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == substantiveSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
+    val substantiveWord = bufferSet.wordRepresentations(substantiveReprIndex).word
+    val substantiveAccIndex = bufferSet.acceptations.findUniqueIndexWhere(_.word == substantiveWord)
+    val substantiveConcept = bufferSet.acceptations(substantiveAccIndex).concept
+
+    val expectedAgent = Agent(
+      StreamedDatabaseConstants.nullBunchId,
+      Set(substantiveConcept),
+      Map(),
+      Map(Main.kanjiAlphabet -> prefixSymbolArrayIndex),
+      ruleConcept,
+      fromStart = true
     )
 
     bufferSet.agents.contains(expectedAgent) shouldBe true

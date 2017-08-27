@@ -589,7 +589,7 @@ object Main {
       }).toSet
 
       if (sources.nonEmpty) {
-        bufferSet.agents += Agent(targetBunch, sources, Map(), Map(), StreamedDatabaseConstants.nullBunchId)
+        bufferSet.agents += Agent(targetBunch, sources, Map(), Map(), StreamedDatabaseConstants.nullBunchId, fromStart = false)
       }
     }
 
@@ -629,7 +629,7 @@ object Main {
         }
 
         val ruleSymbolArrayIndex = bufferSet.addSymbolArray(rule.pattern)
-        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex), ruleConcept)
+        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex), ruleConcept, rule.fromStart)
       }
     }
   }

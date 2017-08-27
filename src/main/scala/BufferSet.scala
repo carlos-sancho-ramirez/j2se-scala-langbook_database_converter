@@ -3,7 +3,41 @@ import scala.collection.mutable.ArrayBuffer
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
 
-case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation, rule: Int /* concept */)
+/** Data for Agents.
+  *
+  * An agent is a dynamic algorithm that fills the target bunch
+  * considering the acceptations in sourceBunches that are not
+  * included in the diffBunches.
+  * In addition, if matcher is present, only acceptations whose
+  * words matches the matcher will be processed.
+  * If adder is present, the words may be converted in its
+  * derivatives following the adder, creating new acceptations.
+  * Only if the adder is present, the rule parameter will be
+  * associated with the mutation applied.
+  *
+  * @param targetBunch bunch to be filled.
+  *                    It can be [[StreamedDatabaseConstants.nullBunchId]]
+  *                    if there is no other agent that is going
+  *                    to use the result of this as source.
+  * @param sourceBunches Set of bunches to get the words from.
+  *                      [[StreamedDatabaseConstants.nullBunchId]]
+  *                      can be included in this set to mention
+  *                      that it applies to each aceptation in
+  *                      the database.
+  * @param matcher Optional map from Alphabet to symbol array
+  *                used as filter in the acceptations.
+  * @param adder Optional map from alphabet to symbol array used
+  *              to replace all matched symbol arrays.
+  * @param rule Concept for the rule applied. This should be
+  *             [[StreamedDatabaseConstants.nullBunchId]] when
+  *             no adder is provided as no modifications are
+  *             given in the word.
+  * @param fromStart If true, matcher and adder is applied from
+  *                  the beginning of the word (prefix).
+  *                  If false, they are applied from the rear part (suffix).
+  */
+case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation, rule: Int /* concept */, fromStart: Boolean)
+
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
 }
