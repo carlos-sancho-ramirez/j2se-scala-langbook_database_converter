@@ -1,6 +1,7 @@
 import java.io.{File, FileOutputStream, IOException, RandomAccessFile}
 import java.security.{DigestOutputStream, MessageDigest}
 
+import BufferSet.Correlation
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
 import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
 
@@ -218,6 +219,101 @@ object StreamedDatabaseWriter {
 
       obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
       obs.writeRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1, javaSet)
+    }
+
+    def listOrder(a: List[Int], b: List[Int]): Boolean = {
+      a.isEmpty || b.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail))
+    }
+
+    // Export agents
+    val sortedAgents = bufferSet.agents.toVector.sortWith { (a1, a2) =>
+      a1.targetBunch < a2.targetBunch ||
+      a1.targetBunch == a2.targetBunch && {
+        val a1sources = a1.sourceBunches.toList.sorted
+        val a2sources = a2.sourceBunches.toList.sorted
+        listOrder(a1sources, a2sources)
+      }
+    }
+
+    val agentsLength = sortedAgents.size
+    obs.writeNaturalNumber(agentsLength)
+    if (agentsLength > 0) {
+      val nat3Table = new NaturalNumberHuffmanTable(3)
+
+      val sourceSetLengthFreqMap = new java.util.HashMap[Integer, Integer]()
+      val matcherSetLengthFreqMap = new java.util.HashMap[java.lang.Long, Integer]()
+      for (agent <- sortedAgents) {
+        val sourceLength = agent.sourceBunches.size
+        val sourceValue = sourceSetLengthFreqMap.getOrDefault(sourceLength, 0)
+        sourceSetLengthFreqMap.put(sourceLength, sourceValue + 1)
+
+        val matcherLength = agent.matcher.size.toLong
+        val matcherValue = matcherSetLengthFreqMap.getOrDefault(matcherLength, 0)
+        matcherSetLengthFreqMap.put(matcherLength, matcherValue + 1)
+
+        val adderLength = agent.adder.size.toLong
+        val adderValue = matcherSetLengthFreqMap.getOrDefault(adderLength, 0)
+        matcherSetLengthFreqMap.put(adderLength, adderValue + 1)
+      }
+      val sourceSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](sourceSetLengthFreqMap, (x,y) => Integer.compare(x,y))
+      val matcherSetLengthTable = DefinedHuffmanTable.withFrequencies[java.lang.Long](matcherSetLengthFreqMap, (x,y) => java.lang.Long.compare(x,y))
+
+      obs.writeHuffmanTable[Integer](sourceSetLengthTable, l => obs.writeHuffmanSymbol[java.lang.Long](nat3Table, l.toLong), null)
+      obs.writeHuffmanTable[java.lang.Long](matcherSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
+
+      var lastTarget = StreamedDatabaseConstants.nullBunchId
+      var minSource = StreamedDatabaseConstants.minValidConcept
+      for (agent <- sortedAgents) {
+        val newTarget = agent.targetBunch
+        obs.writeRangedNumber(lastTarget, maxConcept, newTarget)
+
+        if (newTarget != lastTarget) {
+          minSource = StreamedDatabaseConstants.minValidConcept
+        }
+
+        val sourceBunches = agent.sourceBunches
+        val valueSet = new java.util.HashSet[Integer]()
+        var newMinSource = {
+          if (sourceBunches.isEmpty) minSource
+          else sourceBunches.min
+        }
+
+        for (value <- sourceBunches) {
+          valueSet.add(value)
+        }
+
+        obs.writeRangedNumberSet(sourceSetLengthTable, minSource, maxConcept, valueSet)
+        minSource = newMinSource
+
+        def writeCorrelationMap(map: Correlation): Unit = {
+          val maxAlphabet = bufferSet.alphabets.size - 1
+          val mapLength = map.size
+          obs.writeHuffmanSymbol[java.lang.Long](matcherSetLengthTable, java.lang.Long.valueOf(mapLength))
+          if (mapLength > 0) {
+            val list = map.toList.sortWith(_._1 < _._1)
+            var minAlphabet = 0
+            for ((alphabet, symbolArrayIndex) <- list) {
+              obs.writeRangedNumber(minAlphabet, maxAlphabet, alphabet)
+              minAlphabet = alphabet + 1
+
+              obs.writeRangedNumber(0, symbolArraysLength - 1, symbolArrayIndex)
+            }
+          }
+        }
+
+        writeCorrelationMap(agent.matcher)
+        writeCorrelationMap(agent.adder)
+
+        if (agent.adder.nonEmpty) {
+          obs.writeRangedNumber(StreamedDatabaseConstants.minValidConcept, maxConcept, agent.rule)
+        }
+
+        if (agent.matcher.nonEmpty || agent.adder.nonEmpty) {
+          obs.writeBoolean(agent.fromStart)
+        }
+
+        lastTarget = newTarget
+      }
     }
 
     obs.close()

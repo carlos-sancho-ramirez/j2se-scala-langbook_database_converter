@@ -249,4 +249,106 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
 
     checkWriteAndRead(sourceSet)
   }
+
+  it should "match on write and read agent matching all い ended words" in {
+    val bufferSet = new BufferSet()
+
+    val iSymbolArray = bufferSet.addSymbolArray("い")
+
+    var (_, conceptCount) = bufferSet.maxWordAndConceptIndexes
+    conceptCount += 1
+    val targetBunch = conceptCount
+
+    val matcher = Map(
+      Main.kanjiAlphabet -> iSymbolArray
+    )
+
+    bufferSet.agents += Agent(
+      targetBunch,
+      sourceBunches = Set(),
+      matcher,
+      adder = Map(),
+      rule = StreamedDatabaseConstants.nullBunchId,
+      fromStart = false
+    )
+
+    checkWriteAndRead(bufferSet)
+  }
+
+  it should "match on write and read agent collecting all adjective" in {
+    val bufferSet = new BufferSet()
+
+    var (_, conceptCount) = bufferSet.maxWordAndConceptIndexes
+
+    conceptCount += 1
+    val iAdjBunch = conceptCount
+
+    conceptCount += 1
+    val naAdjBunch = conceptCount
+
+    conceptCount += 1
+    val allAdjBunch = conceptCount
+
+    bufferSet.agents += Agent(
+      targetBunch = allAdjBunch,
+      sourceBunches = Set(iAdjBunch, naAdjBunch),
+      matcher = Map(),
+      adder = Map(),
+      rule = StreamedDatabaseConstants.nullBunchId,
+      fromStart = false
+    )
+
+    checkWriteAndRead(bufferSet)
+  }
+
+  it should "match on write and read agent changing suffix" in {
+    val bufferSet = new BufferSet()
+
+    val iSymbolArrayIndex = bufferSet.addSymbolArray("い")
+    val kattaSymbolArrayIndex = bufferSet.addSymbolArray("かった")
+
+    var (_, conceptCount) = bufferSet.maxWordAndConceptIndexes
+
+    conceptCount += 1
+    val iAdjBunch = conceptCount
+
+    conceptCount += 1
+    val ruleConcept = conceptCount
+
+    bufferSet.agents += Agent(
+      targetBunch = StreamedDatabaseConstants.nullBunchId,
+      sourceBunches = Set(iAdjBunch),
+      matcher = Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
+      adder = Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex),
+      rule = ruleConcept,
+      fromStart = false
+    )
+
+    checkWriteAndRead(bufferSet)
+  }
+
+  it should "match on write and read agent changing prefix" in {
+    val bufferSet = new BufferSet()
+
+    val goSymbolArrayIndex = bufferSet.addSymbolArray("ご")
+
+    var (_, conceptCount) = bufferSet.maxWordAndConceptIndexes
+
+    conceptCount += 1
+    val waseiKangoBunch = conceptCount
+
+    conceptCount += 1
+    val ruleConcept = conceptCount
+
+    bufferSet.agents += Agent(
+      targetBunch = StreamedDatabaseConstants.nullBunchId,
+      sourceBunches = Set(waseiKangoBunch),
+      matcher = Map(),
+      adder = Map(Main.kanjiAlphabet -> goSymbolArrayIndex),
+      rule = ruleConcept,
+      fromStart = true
+    )
+
+    checkWriteAndRead(bufferSet)
+  }
 }

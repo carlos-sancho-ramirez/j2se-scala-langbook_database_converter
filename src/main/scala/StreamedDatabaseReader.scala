@@ -1,5 +1,6 @@
+import BufferSet.Correlation
 import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
+import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -130,6 +131,65 @@ object StreamedDatabaseReader {
       }
 
       bufferSet.bunchAcceptations(bunch) = acceptations.toSet
+    }
+
+    // Export agents
+    val agentsLength = ibs.readNaturalNumber().toInt
+    if (agentsLength > 0) {
+      val nat3Table = new NaturalNumberHuffmanTable(3)
+      val sourceSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
+      val matcherSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
+
+      var lastTarget = StreamedDatabaseConstants.nullBunchId
+      var minSource = StreamedDatabaseConstants.minValidConcept
+      for (i <- 0 until agentsLength) {
+        val targetBunch = ibs.readRangedNumber(lastTarget, maxConcept)
+
+        if (targetBunch != lastTarget) {
+          minSource = StreamedDatabaseConstants.minValidConcept
+        }
+
+        val sourceJavaSetIterator = ibs.readRangedNumberSet(sourceSetLengthTable, minSource, maxConcept).iterator()
+        val mutableSourceSet = scala.collection.mutable.Set[Int]()
+        while (sourceJavaSetIterator.hasNext) {
+          mutableSourceSet += sourceJavaSetIterator.next()
+        }
+
+        if (mutableSourceSet.nonEmpty) {
+          minSource = mutableSourceSet.min
+        }
+
+        def readCorrelationMap(): Correlation = {
+          val maxAlphabet = bufferSet.alphabets.size - 1
+          val mapLength = ibs.readHuffmanSymbol(matcherSetLengthTable)
+          val result = scala.collection.mutable.Map[Int, Int]()
+          var minAlphabet = 0
+          for (i <- 0 until mapLength) {
+            val alphabet = ibs.readRangedNumber(minAlphabet, maxAlphabet)
+            minAlphabet = alphabet + 1
+            val symbolArrayIndex = ibs.readRangedNumber(0, symbolArraysLength - 1)
+            result(alphabet) = symbolArrayIndex
+          }
+
+          result.toMap
+        }
+
+        val matcher = readCorrelationMap()
+        val adder = readCorrelationMap()
+
+        val rule = {
+          if (adder.nonEmpty) {
+            ibs.readRangedNumber(StreamedDatabaseConstants.minValidConcept, maxConcept)
+          }
+          else StreamedDatabaseConstants.nullBunchId
+        }
+
+        val fromStart = (matcher.nonEmpty || adder.nonEmpty) && ibs.readBoolean()
+
+        bufferSet.agents += Agent(targetBunch, mutableSourceSet.toSet, matcher, adder, rule, fromStart)
+
+        lastTarget = targetBunch
+      }
     }
 
     ibs.close()

@@ -21,9 +21,10 @@ case class Acceptation(word: Int, concept: Int)
   *                    to use the result of this as source.
   * @param sourceBunches Set of bunches to get the words from.
   *                      [[StreamedDatabaseConstants.nullBunchId]]
-  *                      can be included in this set to mention
-  *                      that it applies to each aceptation in
-  *                      the database.
+  *                      cannot be included in this set. In order
+  *                      to mention that this agent applies to
+  *                      each acceptation in the database an
+  *                      empty set must be used.
   * @param matcher Optional map from Alphabet to symbol array
   *                used as filter in the acceptations.
   * @param adder Optional map from alphabet to symbol array used
@@ -50,6 +51,7 @@ object BufferSet {
   * Contain all mutable collections representing in memory the current database state.
   */
 class BufferSet {
+  val alphabets = Main.alphabets
   val wordRepresentations = ArrayBuffer[WordRepresentation]()
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
@@ -143,7 +145,33 @@ class BufferSet {
 
     val maxConceptFromBunchAcceptations = (bunchAcceptations.keySet + (-1)).max
 
-    val maxConcept = Set(maxConceptFromAcceptations, maxConceptFromBunchConcepts, maxConceptFromBunchAcceptations).max
+    val maxConceptFromAgentTargets = agents.foldLeft(-1) {
+      case (acc, agent) =>
+        if (agent.targetBunch > acc) agent.targetBunch
+        else acc
+    }
+
+    val maxConceptFromAgentRules = agents.foldLeft(-1) {
+      case (acc, agent) =>
+        if (agent.rule > acc) agent.rule
+        else acc
+    }
+
+    val maxConceptFromAgentSources = agents.foldLeft(-1) {
+      case (acc, agent) =>
+        if (agent.sourceBunches.isEmpty) acc
+        else Math.max(agent.sourceBunches.max, acc)
+    }
+
+    val maxConcept = Set(
+      maxConceptFromAcceptations,
+      maxConceptFromBunchConcepts,
+      maxConceptFromBunchAcceptations,
+      maxConceptFromAgentTargets,
+      maxConceptFromAgentRules,
+      maxConceptFromAgentSources
+    ).max
+
     (maxWordFromAcceptations, maxConcept)
   }
 }
