@@ -589,7 +589,7 @@ object Main {
       }).toSet
 
       if (sources.nonEmpty) {
-        bufferSet.agents += Agent(targetBunch, sources, Map(), Map())
+        bufferSet.agents += Agent(targetBunch, sources, Map(), Map(), StreamedDatabaseConstants.nullBunchId)
       }
     }
 
@@ -611,8 +611,25 @@ object Main {
       }
 
       if (matchers.size < 2) {
+        val ruleNameSymbolArrayIndex = bufferSet.addSymbolArray(rule.form)
+        val ruleWordIdOpt = bufferSet.wordRepresentations.collectFirst { case repr if repr.symbolArray == ruleNameSymbolArrayIndex && repr.alphabet == esAlphabet => repr.word }
+        val ruleWordId = ruleWordIdOpt.getOrElse {
+          val newWordId = wordCount
+          wordCount += 1
+          bufferSet.wordRepresentations += WordRepresentation(newWordId, esAlphabet, ruleNameSymbolArrayIndex)
+          esWords += newWordId
+          newWordId
+        }
+
+        val ruleConcept = bufferSet.acceptations.collectFirst { case acc if acc.word == ruleWordId => acc.concept }.getOrElse {
+          val newConcept = conceptCount
+          conceptCount += 1
+          bufferSet.acceptations += Acceptation(ruleWordId, newConcept)
+          newConcept
+        }
+
         val ruleSymbolArrayIndex = bufferSet.addSymbolArray(rule.pattern)
-        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex))
+        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex), ruleConcept)
       }
     }
   }

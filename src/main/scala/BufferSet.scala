@@ -3,7 +3,7 @@ import scala.collection.mutable.ArrayBuffer
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
 
-case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation)
+case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation, rule: Int /* concept */)
 object InvalidRegister {
   val wordRepresentation = WordRepresentation(-1, -1, -1)
 }

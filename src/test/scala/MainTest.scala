@@ -847,7 +847,7 @@ class MainTest extends FlatSpec with Matchers {
     val intransitiveConcept = bufferSet.acceptations(intransitiveAccIndex).concept
 
     val sourceBunches = Set(transitiveConcept, intransitiveConcept)
-    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map()))
+    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map(), StreamedDatabaseConstants.nullBunchId))
   }
 
   it should "include agents for lists with grammar rules" in {
@@ -874,10 +874,11 @@ class MainTest extends FlatSpec with Matchers {
       naConstraintId -> naStr
     )
 
+    val ruleName = "pasado"
     val pastRuleId = 8
     val kattaStr = "かった"
     val grammarRules = Map(
-      pastRuleId -> GrammarRuleRegister("past", 0, kattaStr)
+      pastRuleId -> GrammarRuleRegister(ruleName, 0, kattaStr)
     )
 
     val listChildRegisters = Vector(
@@ -897,6 +898,12 @@ class MainTest extends FlatSpec with Matchers {
     val kattaSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf kattaStr
     bufferSet.symbolArrays indexOf naStr should be < 0
 
+    val ruleSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf ruleName
+    val ruleWordReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.alphabet == Main.esAlphabet && repr.symbolArray == ruleSymbolArrayIndex)
+    val ruleWord = bufferSet.wordRepresentations(ruleWordReprIndex).word
+    val ruleAccIndex = bufferSet.acceptations.findUniqueIndexWhere(acc => acc.word == ruleWord)
+    val ruleConcept = bufferSet.acceptations(ruleAccIndex).concept
+
     val iAdjSymbolArrayIndex = bufferSet.symbolArrays findUniqueIndexOf iAdjListName
     val iAdjReprIndex = bufferSet.wordRepresentations.findUniqueIndexWhere(repr => repr.symbolArray == iAdjSymbolArrayIndex && repr.alphabet == Main.esAlphabet)
     val iAdjWord = bufferSet.wordRepresentations(iAdjReprIndex).word
@@ -907,7 +914,8 @@ class MainTest extends FlatSpec with Matchers {
       StreamedDatabaseConstants.nullBunchId,
       Set(iAdjConcept),
       Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
-      Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex)
+      Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex),
+      ruleConcept
     )
 
     bufferSet.agents.contains(expectedAgent) shouldBe true
