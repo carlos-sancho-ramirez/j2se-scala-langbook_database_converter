@@ -139,7 +139,15 @@ object StreamedDatabaseReader {
         concepts += iterator.next()
       }
 
-      bufferSet.bunchConcepts(bunch) = concepts.toSet
+      val previousOpt = bufferSet.bunchConcepts.get(bunch)
+      if (previousOpt.nonEmpty) {
+        if (concepts.toSet != previousOpt.get) {
+          throw new AssertionError("Repeated key should match in value")
+        }
+      }
+      else {
+        bufferSet.bunchConcepts(bunch) = concepts.toSet
+      }
     }
 
     // Export bunchAcceptations
@@ -187,10 +195,10 @@ object StreamedDatabaseReader {
         }
 
         def readCorrelationMap(): Correlation = {
-          val maxAlphabet = bufferSet.alphabets.size - 1
+          val maxAlphabet = bufferSet.alphabets.max
           val mapLength = ibs.readHuffmanSymbol(matcherSetLengthTable)
           val result = scala.collection.mutable.Map[Int, Int]()
-          var minAlphabet = 0
+          var minAlphabet = bufferSet.alphabets.min
           for (i <- 0 until mapLength) {
             val alphabet = ibs.readRangedNumber(minAlphabet, maxAlphabet)
             minAlphabet = alphabet + 1

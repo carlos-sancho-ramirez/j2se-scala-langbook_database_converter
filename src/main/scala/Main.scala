@@ -185,8 +185,11 @@ object Main {
     }
 
     def appendJapaneseWord(concepts: Set[Int], correlation: Vector[(String, String)]): Int = {
-      val vector = correlation.map {
-        case (kanjiStr, kanaStr) =>
+      val kanjiKanaDiffer = correlation.exists { case (str1, str2) => str1 != str2 }
+
+      val wordIndex = wordCount
+      if (kanjiKanaDiffer) {
+        val vector = correlation.map { case (kanjiStr, kanaStr) =>
           val kanjiIndex = bufferSet.addSymbolArray(kanjiStr)
           val kanaIndex = bufferSet.addSymbolArray(kanaStr)
           val pair = (kanjiIndex, kanaIndex)
@@ -198,10 +201,15 @@ object Main {
             bufferSet.kanjiKanaCorrelations += pair
             newIndex
           }
-      }
+        }
 
-      val wordIndex = wordCount
-      bufferSet.jaWordCorrelations(wordIndex) = Set((concepts, vector))
+        bufferSet.jaWordCorrelations(wordIndex) = Set((concepts, vector))
+      }
+      else {
+        val str = correlation.map(_._1).mkString("")
+        val index = bufferSet.addSymbolArray(str)
+        bufferSet.wordRepresentations += WordRepresentation(wordIndex, kanaAlphabet, index)
+      }
 
       wordCount += 1
       jaWords += wordIndex
@@ -233,12 +241,24 @@ object Main {
       concept
     }
 
-    registerWord("Language", "idioma", Vector("言" -> "げん", "語" -> "ご"))
+    registerWordWithConcept(StreamedDatabaseConstants.languageConcept, "language", "idioma", Vector("言" -> "げん", "語" -> "ご"))
     registerWordWithConcept(enLanguage, "English", "inglés", Vector("英" -> "えい", "語" -> "ご"))
     registerWordWithConcept(esLanguage, "Spanish", "español", Vector("スペイン" -> "スペイン", "語" -> "ご"))
     registerWordWithConcept(jaLanguage, "Japanese", "japonés", Vector("日本" -> "にほん", "語" -> "ご"))
-    registerWord("kanji", "kanji", Vector("漢" -> "かん", "字" -> "じ"))
-    registerWord("kana", "kana", Vector("仮" -> "か", "名" -> "な"))
+
+    registerWordWithConcept(StreamedDatabaseConstants.alphabetConcept, "alphabet", "alfabeto", Vector("アルファベット" -> "アルファベット"))
+    registerWordWithConcept(enAlphabet, "English alphabet", "alfabeto inglés", Vector("英" -> "えい", "語" -> "ご", "の" -> "の", "アルファベット" -> "アルファベット"))
+    registerWordWithConcept(esAlphabet, "Spanish alphabet", "alfabeto español", Vector("スペイン" -> "スペイン", "語" -> "ご", "の" -> "の", "アルファベット" -> "アルファベット"))
+    registerWordWithConcept(kanjiAlphabet, "kanji", "kanji", Vector("漢" -> "かん", "字" -> "じ"))
+    registerWordWithConcept(kanaAlphabet, "kana", "kana", Vector("仮" -> "か", "名" -> "な"))
+    registerWordWithConcept(roumajiAlphabet, "roumaji", "roumaji", Vector("ローマ" -> "ローマ", "字" -> "じ"))
+
+    // Link concepts
+    bufferSet.bunchConcepts(StreamedDatabaseConstants.languageConcept) =
+      Set(enLanguage, esLanguage, jaLanguage)
+
+    bufferSet.bunchConcepts(StreamedDatabaseConstants.alphabetConcept) =
+      Set(enAlphabet, esAlphabet, kanjiAlphabet, kanaAlphabet, roumajiAlphabet)
 
     // Add conversions
     val conversionPairs = for ((kanaText, roumajiText) <- hiragana2RoumajiConversionPairs) yield {

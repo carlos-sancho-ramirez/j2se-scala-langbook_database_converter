@@ -304,12 +304,12 @@ object StreamedDatabaseWriter {
         minSource = newMinSource
 
         def writeCorrelationMap(map: Correlation): Unit = {
-          val maxAlphabet = bufferSet.alphabets.size - 1
+          val maxAlphabet = bufferSet.alphabets.max
           val mapLength = map.size
           obs.writeHuffmanSymbol[java.lang.Long](matcherSetLengthTable, java.lang.Long.valueOf(mapLength))
           if (mapLength > 0) {
             val list = map.toList.sortWith(_._1 < _._1)
-            var minAlphabet = 0
+            var minAlphabet = bufferSet.alphabets.min
             for ((alphabet, symbolArrayIndex) <- list) {
               obs.writeRangedNumber(minAlphabet, maxAlphabet, alphabet)
               minAlphabet = alphabet + 1
