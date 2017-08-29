@@ -1,6 +1,6 @@
 import BufferSet.Correlation
-import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
+import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
+import sword.bitstream.{HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -9,6 +9,7 @@ object StreamedDatabaseReader {
   def readSymbolArrays(symbolArrays: ArrayBuffer[String], ibs: InputBitStream): Unit = {
 
     // Read the number of symbol arrays
+    val symbolArraysInitLength = symbolArrays.size
     val symbolArraysLength = ibs.readNaturalNumber().toInt
 
     if (symbolArraysLength > 0) {
@@ -25,18 +26,44 @@ object StreamedDatabaseReader {
       // Read all symbol arrays
       for (i <- 0 until symbolArraysLength) {
         val length = ibs.readHuffmanSymbol(symbolArraysLengthHuffmanTable)
-        val str = new StringBuilder()
+        val strBuilder = new StringBuilder()
         for (j <- 0 until length) {
-          str.append(ibs.readHuffmanSymbol(huffmanTable))
+          strBuilder.append(ibs.readHuffmanSymbol(huffmanTable))
         }
 
-        symbolArrays += str.toString
+        val str = strBuilder.toString
+        if (i < symbolArraysInitLength) {
+          if (symbolArrays(i) != str) {
+            throw new AssertionError(s"Predefined symbol arrays are not respected. At index $i, the expectation was '${symbolArrays(i)}' but was '$str'")
+          }
+        }
+        else {
+          symbolArrays += str.toString
+        }
       }
     }
   }
 
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
     readSymbolArrays(bufferSet.symbolArrays, ibs)
+    val symbolArraysLength = bufferSet.symbolArrays.length
+
+    // Ensure same languages (as they are constant here)
+    val nat2Table = new NaturalNumberHuffmanTable(2)
+    if (ibs.readNaturalNumber() != bufferSet.languages.size) {
+      throw new AssertionError("Number of languages does not match")
+    }
+
+    for (language <- bufferSet.languages) {
+      if (bufferSet.symbolArrays(ibs.readRangedNumber(0, symbolArraysLength - 1)) != language.code) {
+        throw new AssertionError(s"Language code for '${language.code}' does not match")
+      }
+
+      val alphabetCount = ibs.readHuffmanSymbol(nat2Table).intValue
+      if (alphabetCount != language.alphabets.size) {
+        throw new AssertionError(s"Number of alphabets does not match for language '${language.code}'. Read $alphabetCount")
+      }
+    }
 
     // Export the amount of words and concepts in order to range integers
     val maxWord = ibs.readNaturalNumber().toInt - 1
@@ -51,7 +78,7 @@ object StreamedDatabaseReader {
     }
 
     // Export word representations
-    val symbolArraysLength = bufferSet.symbolArrays.length
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
     val wordRepresentationLength = ibs.readNaturalNumber().toInt
     for (i <- 0 until wordRepresentationLength) {
       val word = ibs.readRangedNumber(minValidWord, maxWord)

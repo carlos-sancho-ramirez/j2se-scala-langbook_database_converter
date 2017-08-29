@@ -1,18 +1,15 @@
 import java.io._
 
-import BufferSet.Correlation
-
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable
 
 object Main {
 
-  val alphabetConceptBase = StreamedDatabaseConstants.minValidConcept
-  val enAlphabet = alphabetConceptBase
-  val esAlphabet = alphabetConceptBase + 1
-  val kanjiAlphabet = alphabetConceptBase + 2
-  val kanaAlphabet = alphabetConceptBase + 3
-  val roumajiAlphabet = alphabetConceptBase + 4
+  val enAlphabet = StreamedDatabaseConstants.minValidAlphabet
+  val esAlphabet = StreamedDatabaseConstants.minValidAlphabet + 1
+  val kanjiAlphabet = StreamedDatabaseConstants.minValidAlphabet + 2
+  val kanaAlphabet = StreamedDatabaseConstants.minValidAlphabet + 3
+  val roumajiAlphabet = StreamedDatabaseConstants.minValidAlphabet + 4
 
   val alphabets = Vector(
     enAlphabet, // English
@@ -22,24 +19,24 @@ object Main {
     roumajiAlphabet // Japanese roumaji
   )
 
-  case class Language(concept: Int, code: String)
+  case class Language(concept: Int, code: String, alphabets: Set[Int])
 
-  val minValidLanguage = 0
-  val maxValidLanguage = 2
+  val minValidLanguage = StreamedDatabaseConstants.minValidAlphabet + alphabets.max
 
-  val languageConceptBase = alphabetConceptBase + alphabets.max + 1
-  val enLanguage = languageConceptBase
-  val esLanguage = languageConceptBase + 1
-  val jaLanguage = languageConceptBase + 2
+  val enLanguage = minValidLanguage
+  val esLanguage = minValidLanguage + 1
+  val jaLanguage = minValidLanguage + 2
 
   val languages = Vector(
-    Language(enLanguage, "en"), // English
-    Language(esLanguage, "es"), // Spanish
-    Language(jaLanguage, "ja") // Japanese
+    Language(enLanguage, "en", Set(enAlphabet)), // English
+    Language(esLanguage, "es", Set(esAlphabet)), // Spanish
+    Language(jaLanguage, "ja", Set(kanjiAlphabet, kanaAlphabet, roumajiAlphabet)) // Japanese
   )
 
+  val maxValidLanguage = minValidLanguage + languages.size - 1
+
   val dbWordBase = StreamedDatabaseConstants.minValidWord
-  val dbConceptBase = languageConceptBase + languages.size
+  val dbConceptBase = maxValidLanguage + 1
 
   // TODO: This should not be static
   val enWords = scala.collection.mutable.BitSet()

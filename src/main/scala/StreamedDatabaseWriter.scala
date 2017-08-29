@@ -2,8 +2,8 @@ import java.io.{File, FileOutputStream, IOException, RandomAccessFile}
 import java.security.{DigestOutputStream, MessageDigest}
 
 import BufferSet.Correlation
-import StreamedDatabaseConstants.{maxValidAlphabet, minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
+import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
+import sword.bitstream.{DefinedHuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
 
 object StreamedDatabaseWriter {
 
@@ -53,7 +53,25 @@ object StreamedDatabaseWriter {
   }
 
   def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
+    val symbolArraysLength = bufferSet.symbolArrays.length
     writeSymbolArrays(bufferSet.symbolArrays, obs)
+
+    // Export languages
+    val nat2Table = new NaturalNumberHuffmanTable(2)
+    val languagesLength = bufferSet.languages.size
+    obs.writeNaturalNumber(languagesLength)
+    var baseAlphabetCounter = StreamedDatabaseConstants.minValidAlphabet
+    for (language <- bufferSet.languages) {
+      val symbolArrayIndex = bufferSet.symbolArrays.indexOf(language.code)
+      obs.writeRangedNumber(0, symbolArraysLength - 1, symbolArrayIndex)
+      val alphabetCount = language.alphabets.size
+
+      if (language.alphabets.min != baseAlphabetCounter && language.alphabets.max != baseAlphabetCounter + alphabetCount - 1) {
+        throw new AssertionError(s"Invalid alphabets for language '${language.code}'")
+      }
+      obs.writeHuffmanSymbol[java.lang.Long](nat2Table, alphabetCount.toLong)
+      baseAlphabetCounter += alphabetCount
+    }
 
     // Export the amount of words and concepts in order to range integers
     val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
@@ -70,7 +88,6 @@ object StreamedDatabaseWriter {
     }
 
     // Export word representations
-    val symbolArraysLength = bufferSet.symbolArrays.length
     var wordRepresentationLength = 0
     for (repr <- bufferSet.wordRepresentations) {
       if (repr.word >= minValidWord && repr.alphabet >= minValidAlphabet && repr.symbolArray >= 0) {
@@ -78,6 +95,7 @@ object StreamedDatabaseWriter {
       }
     }
 
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
     println(s"Exporting word representations ($wordRepresentationLength in total)")
     obs.writeNaturalNumber(wordRepresentationLength)
     for (repr <- bufferSet.wordRepresentations) {

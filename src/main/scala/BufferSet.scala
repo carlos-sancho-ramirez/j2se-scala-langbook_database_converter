@@ -1,3 +1,5 @@
+import Main.languages
+
 import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
@@ -52,6 +54,7 @@ object BufferSet {
   */
 class BufferSet {
   val alphabets = Main.alphabets
+  val languages = Main.languages
   val wordRepresentations = ArrayBuffer[WordRepresentation]()
   val acceptations = ArrayBuffer[Acceptation]()
   val symbolArrays = ArrayBuffer[String]()
@@ -173,5 +176,10 @@ class BufferSet {
     ).max
 
     (maxWordFromAcceptations, maxConcept)
+  }
+
+  // Include symbol arrays for language identifiers
+  for (language <- languages) {
+    addSymbolArray(language.code)
   }
 }
