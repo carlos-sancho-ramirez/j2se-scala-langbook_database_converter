@@ -686,8 +686,14 @@ object Main {
     array.toSet
   }
 
+  object FileNames {
+    val basicDatabase = "basic.sdb"
+    val exportDatabase = "export.sdb"
+  }
+
   def main(args: Array[String]): Unit = {
     implicit val bufferSet = initialiseDatabase()
+    StreamedDatabaseWriter.write(bufferSet, FileNames.basicDatabase)
 
     val filePath = {
       val resource = getClass.getClassLoader.getResource("langbook.db")
@@ -708,8 +714,7 @@ object Main {
       oldWordAccMap
     )
 
-    val fileName = "export.sdb"
-    StreamedDatabaseWriter.write(bufferSet, fileName)
+    StreamedDatabaseWriter.write(bufferSet, FileNames.exportDatabase)
 
     val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
     try {
