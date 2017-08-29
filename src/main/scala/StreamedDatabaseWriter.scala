@@ -334,6 +334,17 @@ object StreamedDatabaseWriter {
       }
     }
 
+    // Export ruleConcepts
+    //
+    // Table that relates concept when the rule in agents are applied.
+    // This is required within the database but impossible here.
+    // Conversion done within this project always creates agents with
+    // the targetBunch to null. Thus there is no list in the resulting
+    // database that include muted words, whose acceptations would
+    // include concepts where rules are applied. Then, while all targets
+    // bunches in agents are null, this table will be always empty.
+    obs.writeNaturalNumber(0)
+
     obs.close()
   }
 

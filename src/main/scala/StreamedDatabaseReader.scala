@@ -219,6 +219,11 @@ object StreamedDatabaseReader {
       }
     }
 
+    // Export ruleConcepts
+    if (ibs.readNaturalNumber() != 0L) {
+      throw new AssertionError("Not expected any register within the ruleConcepts table")
+    }
+
     ibs.close()
   }
 }
