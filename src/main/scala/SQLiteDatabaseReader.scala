@@ -1,6 +1,8 @@
 import java.io.{FileOutputStream, PrintWriter}
 import java.sql.DriverManager
 
+import Main.FileNames
+
 import scala.collection.mutable.ArrayBuffer
 
 case class OldWord(wordId: Int, kanjiSymbolArray: String, kanaSymbolArray: String, spSymbolArray: String)
@@ -24,7 +26,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldWords: Iterable[OldWord] = {
     val oldWords = ArrayBuffer[OldWord]()
 
-    val outStream = new PrintWriter(new FileOutputStream("WordRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.wordRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -66,7 +68,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldLists: Map[Int,String] = {
     val oldLists = scala.collection.mutable.Map[Int,String]()
 
-    val outStream = new PrintWriter(new FileOutputStream("ListRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.listRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -100,7 +102,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldListChildren: Iterable[ListChildRegister] = {
     val listChildren = ArrayBuffer[ListChildRegister]()
 
-    val outStream = new PrintWriter(new FileOutputStream("ListChildRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.listChildRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -135,7 +137,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldPronunciations: Map[Int, OldPronunciation] = {
     val pronunciations = scala.collection.mutable.Map[Int, OldPronunciation]()
 
-    val outStream = new PrintWriter(new FileOutputStream("PronunciationRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.pronunciationRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -171,7 +173,7 @@ class SQLiteDatabaseReader(val filePath: String) {
     val pronunciations = readOldPronunciations
     val wordPronunciations = scala.collection.mutable.Map[Int /* word id */, IndexedSeq[OldPronunciation]]()
 
-    val outStream = new PrintWriter(new FileOutputStream("WordPronunciationRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.wordPronunciationRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -231,7 +233,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldGrammarConstraints: Map[Int, String] = {
     val result = scala.collection.mutable.Map[Int, String]()
 
-    val outStream = new PrintWriter(new FileOutputStream("GrammarConstraintRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.grammarConstraintRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)
@@ -265,7 +267,7 @@ class SQLiteDatabaseReader(val filePath: String) {
   def readOldGrammarRules: Map[Int, GrammarRuleRegister] = {
     val result = scala.collection.mutable.Map[Int, GrammarRuleRegister]()
 
-    val outStream = new PrintWriter(new FileOutputStream("GrammarRuleRegister.csv"))
+    val outStream = new PrintWriter(new FileOutputStream(FileNames.grammarRuleRegisterCsv))
     try {
       val path = filePath
       println("Connecting to database at " + path)

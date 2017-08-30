@@ -687,8 +687,22 @@ object Main {
   }
 
   object FileNames {
+    val resourceDatabase = "langbook.db"
+
     val basicDatabase = "basic.sdb"
     val exportDatabase = "export.sdb"
+
+    val acceptationBunchesCsv = "AcceptationBunches.csv"
+    val conceptualBunchesCsv = "ConceptualBunches.csv"
+    val wordsCsv = "Words.csv"
+
+    val wordRegisterCsv = "WordRegister.csv"
+    val listRegisterCsv = "ListRegister.csv"
+    val listChildRegisterCsv = "ListChildRegister.csv"
+    val pronunciationRegisterCsv = "PronunciationRegister.csv"
+    val wordPronunciationRegisterCsv = "WordPronunciationRegister.csv"
+    val grammarConstraintRegisterCsv = "GrammarConstraintRegister.csv"
+    val grammarRuleRegisterCsv = "GrammarRuleRegister.csv"
   }
 
   def main(args: Array[String]): Unit = {
@@ -696,8 +710,8 @@ object Main {
     StreamedDatabaseWriter.write(bufferSet, FileNames.basicDatabase)
 
     val filePath = {
-      val resource = getClass.getClassLoader.getResource("langbook.db")
-      if (resource == null) sys.error("Expected file src/main/resources/langbook.db not present")
+      val resource = getClass.getClassLoader.getResource(FileNames.resourceDatabase)
+      if (resource == null) sys.error(s"Expected file src/main/resources/${FileNames.resourceDatabase} not present")
       new File(resource.toURI).getPath
     }
 
@@ -716,7 +730,7 @@ object Main {
 
     StreamedDatabaseWriter.write(bufferSet, FileNames.exportDatabase)
 
-    val outStream2 = new PrintWriter(new FileOutputStream("Words.csv"))
+    val outStream2 = new PrintWriter(new FileOutputStream(FileNames.wordsCsv))
     try {
       var i = 0
       for (wordEntry <- composeWordEntrySet(bufferSet).toVector.sortWith { case (a, b) =>
@@ -746,7 +760,7 @@ object Main {
       accStrings.toVector.sortWith { case ((_, strs1), (_, strs2)) => scala.math.Ordering.String.lt(strs1.head, strs2.head) }
     }
 
-    val outStream3 = new PrintWriter(new FileOutputStream("ConceptualBunches.csv"))
+    val outStream3 = new PrintWriter(new FileOutputStream(FileNames.conceptualBunchesCsv))
     try {
       val bunches = bufferSet.bunchConcepts.keySet.toSet
 
@@ -778,7 +792,7 @@ object Main {
       outStream3.close()
     }
 
-    val outStream4 = new PrintWriter(new FileOutputStream("AcceptationBunches.csv"))
+    val outStream4 = new PrintWriter(new FileOutputStream(FileNames.acceptationBunchesCsv))
     try {
       val bunches = bufferSet.bunchAcceptations.keySet.toSet
       val titles = sortedSpanishWordsFromConcepts(bunches)
