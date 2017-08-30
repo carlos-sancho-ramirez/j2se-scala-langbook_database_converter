@@ -2,7 +2,7 @@ import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
 import sword.bitstream.{HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 object StreamedDatabaseReader {
 
@@ -65,6 +65,33 @@ object StreamedDatabaseReader {
       }
     }
 
+    // Export conversions
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+    val conversionsLength = ibs.readNaturalNumber().toInt
+    var minSourceAlphabet = minValidAlphabet
+    var minTargetAlphabet = minValidAlphabet
+    for (i <- 0 until conversionsLength) {
+      val sourceAlphabet = ibs.readRangedNumber(minSourceAlphabet, maxValidAlphabet)
+
+      if (minSourceAlphabet != sourceAlphabet) {
+        minTargetAlphabet = minValidAlphabet
+        minSourceAlphabet = sourceAlphabet
+      }
+
+      val targetAlphabet = ibs.readRangedNumber(minTargetAlphabet, maxValidAlphabet)
+      minTargetAlphabet = targetAlphabet + 1
+
+      val pairCount = ibs.readNaturalNumber().toInt
+      val pairs = new ListBuffer[(Int, Int)]()
+      for (j <- 0 until pairCount) {
+        val source = ibs.readRangedNumber(0, symbolArraysLength - 1)
+        val target = ibs.readRangedNumber(0, symbolArraysLength - 1)
+        pairs += ((source, target))
+      }
+
+      bufferSet.conversions += Conversion(sourceAlphabet, targetAlphabet, pairs)
+    }
+
     // Export the amount of words and concepts in order to range integers
     val maxWord = ibs.readNaturalNumber().toInt - 1
     val maxConcept = ibs.readNaturalNumber().toInt - 1
@@ -78,7 +105,6 @@ object StreamedDatabaseReader {
     }
 
     // Export word representations
-    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
     val wordRepresentationLength = ibs.readNaturalNumber().toInt
     for (i <- 0 until wordRepresentationLength) {
       val word = ibs.readRangedNumber(minValidWord, maxWord)

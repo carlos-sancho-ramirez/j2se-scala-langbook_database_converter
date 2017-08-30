@@ -83,6 +83,7 @@ class BufferSet {
       val that = other.asInstanceOf[BufferSet]
 
       symbolArrays == that.symbolArrays &&
+      conversions == that.conversions &&
       acceptations == that.acceptations &&
       wordRepresentations == that.wordRepresentations &&
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
@@ -92,6 +93,8 @@ class BufferSet {
       agents == that.agents
     }
   }
+
+  override def toString: String = conversions.toString
 
   /**
     * Checks if the given symbol array already exist in the list.

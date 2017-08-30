@@ -48,6 +48,27 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     targetSet shouldBe sourceSet
   }
 
+  it should "match on write and read conversions" in {
+    val sourceSet = new BufferSet()
+
+    val kanaRoumaPairs = Vector(
+      sourceSet.addSymbolArray("か") -> sourceSet.addSymbolArray("ka"),
+      sourceSet.addSymbolArray("ぞ") -> sourceSet.addSymbolArray("zo"),
+      sourceSet.addSymbolArray("く") -> sourceSet.addSymbolArray("ku")
+    )
+
+    sourceSet.conversions += Conversion(Main.kanaAlphabet, Main.roumajiAlphabet, kanaRoumaPairs)
+
+    val kanjiKanaPairs = Vector(
+      sourceSet.addSymbolArray("家") -> sourceSet.addSymbolArray("か"),
+      sourceSet.addSymbolArray("族") -> sourceSet.addSymbolArray("ぞく")
+    )
+
+    sourceSet.conversions += Conversion(Main.kanjiAlphabet, Main.kanaAlphabet, kanjiKanaPairs)
+
+    checkWriteAndRead(sourceSet)
+  }
+
   it should "match on write and read acceptations and its representations even if only include symbol arrays" in {
     val sourceSet = new BufferSet()
 

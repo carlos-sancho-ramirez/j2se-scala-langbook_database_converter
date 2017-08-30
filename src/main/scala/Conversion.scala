@@ -17,6 +17,20 @@ class Conversion private[Conversion] (val sourceAlphabet: Int, val targetAlphabe
   }
 
   override def iterator = new ConversionPairIterator()
+
+  override def hashCode: Int = {
+    sourceAlphabet * 31 + targetAlphabet
+  }
+
+  override def equals(other: Any): Boolean = {
+    other != null && other.isInstanceOf[Conversion] && {
+      val that = other.asInstanceOf[Conversion]
+      sourceAlphabet == that.sourceAlphabet &&
+        targetAlphabet == that.targetAlphabet &&
+        java.util.Arrays.equals(sources, that.sources) &&
+        java.util.Arrays.equals(targets, that.targets)
+    }
+  }
 }
 
 object Conversion {

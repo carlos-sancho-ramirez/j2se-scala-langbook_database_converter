@@ -73,6 +73,35 @@ object StreamedDatabaseWriter {
       baseAlphabetCounter += alphabetCount
     }
 
+    // Export conversions
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+    val sortedConversions = bufferSet.conversions.toList.sortWith((a,b) => a.sourceAlphabet < b.sourceAlphabet ||
+        a.sourceAlphabet == b.sourceAlphabet && a.targetAlphabet < b.targetAlphabet)
+
+    obs.writeNaturalNumber(sortedConversions.size)
+    var minSourceAlphabet = minValidAlphabet
+    var minTargetAlphabet = minValidAlphabet
+    for (conv <- sortedConversions) {
+      val sourceAlphabet = conv.sourceAlphabet
+      obs.writeRangedNumber(minSourceAlphabet, maxValidAlphabet, sourceAlphabet)
+
+      if (minSourceAlphabet != sourceAlphabet) {
+        minTargetAlphabet = minValidAlphabet
+        minSourceAlphabet = sourceAlphabet
+      }
+
+      val targetAlphabet = conv.targetAlphabet
+      obs.writeRangedNumber(minTargetAlphabet, maxValidAlphabet, targetAlphabet)
+      minTargetAlphabet = targetAlphabet + 1
+
+      val pairCount = conv.sources.length
+      obs.writeNaturalNumber(pairCount)
+      for (i <- 0 until pairCount) {
+        obs.writeRangedNumber(0, symbolArraysLength - 1, conv.sources(i))
+        obs.writeRangedNumber(0, symbolArraysLength - 1, conv.targets(i))
+      }
+    }
+
     // Export the amount of words and concepts in order to range integers
     val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
     obs.writeNaturalNumber(maxWord + 1)
@@ -95,7 +124,6 @@ object StreamedDatabaseWriter {
       }
     }
 
-    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
     println(s"Exporting word representations ($wordRepresentationLength in total)")
     obs.writeNaturalNumber(wordRepresentationLength)
     for (repr <- bufferSet.wordRepresentations) {
