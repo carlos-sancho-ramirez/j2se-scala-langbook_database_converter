@@ -560,7 +560,7 @@ object Main {
 
     val listsToIgnore = mutable.Set[Int]()
 
-    // Look for the list with title "lists conceptuales". This must be treated in an special way assuming that sublists are generic concepts including more concrete ones.
+    // Look for the list with title "listas conceptuales". This must be treated in an special way assuming that sublists are generic concepts including more concrete ones.
     // The content of the sublists will be registered by their concept and not by their word or acceptation.
     val rootConceptLists = oldLists.collect { case (listId, name) if name == "listas conceptuales" => listId }
     if (rootConceptLists.size == 1) {

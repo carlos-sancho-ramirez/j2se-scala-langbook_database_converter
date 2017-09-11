@@ -5,6 +5,9 @@ object StreamedDatabaseConstants {
   /** Reserved for agents for null references */
   val nullBunchId = 0
 
+  /** Reserved for agents for null references */
+  val nullRuleId = 0
+
   /** Parent concept for all alphabets within the database */
   val alphabetConcept = 1
 
