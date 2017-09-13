@@ -913,8 +913,14 @@ class MainTest extends FlatSpec with Matchers {
     val expectedAgent = Agent(
       StreamedDatabaseConstants.nullBunchId,
       Set(iAdjConcept),
-      Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
-      Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex),
+      Map(
+        Main.kanjiAlphabet -> iSymbolArrayIndex,
+        Main.kanaAlphabet -> iSymbolArrayIndex
+      ),
+      Map(
+        Main.kanjiAlphabet -> kattaSymbolArrayIndex,
+        Main.kanaAlphabet -> kattaSymbolArrayIndex
+      ),
       ruleConcept,
       fromStart = false
     )
@@ -964,7 +970,10 @@ class MainTest extends FlatSpec with Matchers {
       StreamedDatabaseConstants.nullBunchId,
       Set(substantiveConcept),
       Map(),
-      Map(Main.kanjiAlphabet -> prefixSymbolArrayIndex),
+      Map(
+        Main.kanjiAlphabet -> prefixSymbolArrayIndex,
+        Main.kanaAlphabet -> prefixSymbolArrayIndex
+      ),
       ruleConcept,
       fromStart = true
     )

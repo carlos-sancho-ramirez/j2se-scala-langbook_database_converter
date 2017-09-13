@@ -268,7 +268,7 @@ object StreamedDatabaseWriter {
     }
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
-      a.isEmpty || b.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail))
+      b.nonEmpty && (a.isEmpty || a.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail)))
     }
 
     // Export agents

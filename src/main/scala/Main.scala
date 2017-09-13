@@ -622,7 +622,10 @@ object Main {
       val agentMatcher: BufferSet.Correlation = {
         if (matchers.size == 1) {
           val constraintSymbolArrayIndex = bufferSet.addSymbolArray(grammarConstraints(matchers.head))
-          Map(kanjiAlphabet -> constraintSymbolArrayIndex)
+          Map(
+            kanjiAlphabet -> constraintSymbolArrayIndex,
+            kanaAlphabet -> constraintSymbolArrayIndex
+          )
         }
         else Map()
       }
@@ -646,7 +649,12 @@ object Main {
         }
 
         val ruleSymbolArrayIndex = bufferSet.addSymbolArray(rule.pattern)
-        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, Map(kanjiAlphabet -> ruleSymbolArrayIndex), ruleConcept, rule.fromStart)
+        val agentAdder = Map(
+          kanjiAlphabet -> ruleSymbolArrayIndex,
+          kanaAlphabet -> ruleSymbolArrayIndex
+        )
+
+        bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, agentAdder, ruleConcept, rule.fromStart)
       }
     }
   }
