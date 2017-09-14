@@ -21,7 +21,7 @@ object Main {
 
   case class Language(concept: Int, code: String, alphabets: Set[Int])
 
-  val minValidLanguage = StreamedDatabaseConstants.minValidAlphabet + alphabets.max
+  val minValidLanguage = StreamedDatabaseConstants.minValidAlphabet + alphabets.size
 
   val enLanguage = minValidLanguage
   val esLanguage = minValidLanguage + 1
