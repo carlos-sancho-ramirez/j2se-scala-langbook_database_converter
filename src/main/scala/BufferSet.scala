@@ -157,6 +157,9 @@ class BufferSet {
         (maxWord, maxConcept)
     }
 
+    val maxConceptFromAlphabets = alphabets.max
+    val maxConceptFromLanguages = languages.map(_.concept).max
+
     val maxConceptFromBunchConcepts = bunchConcepts.foldLeft(-1) { case (max, (bunch, concepts)) =>
       val thisMax = (concepts + bunch).max
       if (thisMax > max) thisMax
@@ -185,6 +188,8 @@ class BufferSet {
 
     val maxConcept = Set(
       maxConceptFromAcceptations,
+      maxConceptFromAlphabets,
+      maxConceptFromLanguages,
       maxConceptFromBunchConcepts,
       maxConceptFromBunchAcceptations,
       maxConceptFromAgentTargets,
