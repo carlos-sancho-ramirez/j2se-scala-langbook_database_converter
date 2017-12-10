@@ -30,7 +30,7 @@ object StreamedDatabaseWriter {
       val huffmanTable = DefinedHuffmanTable.withFrequencies(
         scala.collection.JavaConverters.mapAsJavaMap(
           charCountMap.mapValues(Integer.valueOf)), Character.compare _)
-      obs.writeHuffmanTable[Char](huffmanTable, obs.writeChar _, (prev, elem) => obs.writeHuffmanSymbol[java.lang.Long](nat4Table, (elem - prev - 1).toLong))
+      obs.writeHuffmanTable[Char](huffmanTable, obs.writeChar _, (prev, elem) => obs.writeHuffmanSymbol[Integer](nat4Table, elem - prev - 1))
 
       // Include suitable bit alignment for symbolArray lengths Huffman table
       val symbolArrayLengthFreqMap = symbolArrays.foldLeft(new java.util.HashMap[Int, java.lang.Integer]()) { case (map, array) =>
@@ -40,7 +40,7 @@ object StreamedDatabaseWriter {
         map
       }
       val symbolArrayLengthHuffmanTable = DefinedHuffmanTable.withFrequencies(symbolArrayLengthFreqMap, Integer.compare _)
-      obs.writeHuffmanTable[Int](symbolArrayLengthHuffmanTable, length => obs.writeNaturalNumber(length), (prev, elem) => obs.writeHuffmanSymbol[java.lang.Long](nat3Table, (elem - prev - 1).toLong))
+      obs.writeHuffmanTable[Int](symbolArrayLengthHuffmanTable, length => obs.writeNaturalNumber(length), (prev, elem) => obs.writeHuffmanSymbol[Integer](nat3Table, elem - prev - 1))
 
       // Include all symbol arrays
       for (array <- symbolArrays) {
@@ -69,7 +69,7 @@ object StreamedDatabaseWriter {
       if (language.alphabets.min != baseAlphabetCounter && language.alphabets.max != baseAlphabetCounter + alphabetCount - 1) {
         throw new AssertionError(s"Invalid alphabets for language '${language.code}'")
       }
-      obs.writeHuffmanSymbol[java.lang.Long](nat2Table, alphabetCount.toLong)
+      obs.writeHuffmanSymbol[Integer](nat2Table, alphabetCount)
       baseAlphabetCounter += alphabetCount
     }
 
@@ -224,7 +224,7 @@ object StreamedDatabaseWriter {
       }
 
       val table = DefinedHuffmanTable.withFrequencies[Integer](bunchConceptsLengthFrecMap, (x, y) => Integer.compare(x, y))
-      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol.toLong), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
       table
     }
     else null
@@ -252,7 +252,7 @@ object StreamedDatabaseWriter {
       }
 
       val table = DefinedHuffmanTable.withFrequencies[Integer](bunchAcceptationsLengthFrecMap, (x, y) => Integer.compare(x, y))
-      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol.toLong), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
       table
     }
     else null
@@ -287,25 +287,25 @@ object StreamedDatabaseWriter {
       val nat3Table = new NaturalNumberHuffmanTable(3)
 
       val sourceSetLengthFreqMap = new java.util.HashMap[Integer, Integer]()
-      val matcherSetLengthFreqMap = new java.util.HashMap[java.lang.Long, Integer]()
+      val matcherSetLengthFreqMap = new java.util.HashMap[Integer, Integer]()
       for (agent <- sortedAgents) {
         val sourceLength = agent.sourceBunches.size
         val sourceValue = sourceSetLengthFreqMap.getOrDefault(sourceLength, 0)
         sourceSetLengthFreqMap.put(sourceLength, sourceValue + 1)
 
-        val matcherLength = agent.matcher.size.toLong
+        val matcherLength = agent.matcher.size
         val matcherValue = matcherSetLengthFreqMap.getOrDefault(matcherLength, 0)
         matcherSetLengthFreqMap.put(matcherLength, matcherValue + 1)
 
-        val adderLength = agent.adder.size.toLong
+        val adderLength = agent.adder.size
         val adderValue = matcherSetLengthFreqMap.getOrDefault(adderLength, 0)
         matcherSetLengthFreqMap.put(adderLength, adderValue + 1)
       }
       val sourceSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](sourceSetLengthFreqMap, (x,y) => Integer.compare(x,y))
-      val matcherSetLengthTable = DefinedHuffmanTable.withFrequencies[java.lang.Long](matcherSetLengthFreqMap, (x,y) => java.lang.Long.compare(x,y))
+      val matcherSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](matcherSetLengthFreqMap, (x,y) => Integer.compare(x,y))
 
-      obs.writeHuffmanTable[Integer](sourceSetLengthTable, l => obs.writeHuffmanSymbol[java.lang.Long](nat3Table, l.toLong), null)
-      obs.writeHuffmanTable[java.lang.Long](matcherSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
+      obs.writeHuffmanTable[Integer](sourceSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
+      obs.writeHuffmanTable[Integer](matcherSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
 
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
@@ -334,7 +334,7 @@ object StreamedDatabaseWriter {
         def writeCorrelationMap(map: Correlation): Unit = {
           val maxAlphabet = bufferSet.alphabets.max
           val mapLength = map.size
-          obs.writeHuffmanSymbol[java.lang.Long](matcherSetLengthTable, java.lang.Long.valueOf(mapLength))
+          obs.writeHuffmanSymbol[Integer](matcherSetLengthTable, Integer.valueOf(mapLength))
           if (mapLength > 0) {
             val list = map.toList.sortWith(_._1 < _._1)
             var minAlphabet = bufferSet.alphabets.min
