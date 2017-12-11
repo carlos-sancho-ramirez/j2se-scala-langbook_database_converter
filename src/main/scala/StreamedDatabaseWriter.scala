@@ -3,7 +3,7 @@ import java.security.{DigestOutputStream, MessageDigest}
 
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
+import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
 
 object StreamedDatabaseWriter {
 
@@ -49,6 +49,19 @@ object StreamedDatabaseWriter {
           obs.writeHuffmanSymbol(huffmanTable, ch)
         }
       }
+    }
+  }
+
+  def writeRangedNumberSet(obs: OutputBitStream, lengthTable: HuffmanTable[Integer], min: Int, max: Int, set: Set[Int]): Unit = {
+    val length = set.size
+    obs.writeHuffmanSymbol[Integer](lengthTable, length)
+    val sortedValues = set.toVector.sorted
+    var currentMax = max - length + 1
+    var currentMin = min
+    for (value <- sortedValues) {
+      obs.writeRangedNumber(currentMin, currentMax, value)
+      currentMin = value + 1
+      currentMax += 1
     }
   }
 
@@ -230,13 +243,8 @@ object StreamedDatabaseWriter {
     else null
 
     for ((bunch, concepts) <- bufferSet.bunchConcepts) {
-      val javaSet = new java.util.HashSet[Integer]()
-      for (concept <- concepts) {
-        javaSet.add(concept)
-      }
-
       obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
-      obs.writeRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept, javaSet)
+      writeRangedNumberSet(obs, bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
     }
 
     // Export bunchAcceptations
@@ -258,13 +266,8 @@ object StreamedDatabaseWriter {
     else null
 
     for ((bunch, accs) <- bufferSet.bunchAcceptations) {
-      val javaSet = new java.util.HashSet[Integer]()
-      for (acc <- accs) {
-        javaSet.add(acc)
-      }
-
       obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
-      obs.writeRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1, javaSet)
+      writeRangedNumberSet(obs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1, accs)
     }
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
@@ -318,18 +321,11 @@ object StreamedDatabaseWriter {
         }
 
         val sourceBunches = agent.sourceBunches
-        val valueSet = new java.util.HashSet[Integer]()
-        var newMinSource = {
+        writeRangedNumberSet(obs, sourceSetLengthTable, minSource, maxConcept, sourceBunches)
+        minSource = {
           if (sourceBunches.isEmpty) minSource
           else sourceBunches.min
         }
-
-        for (value <- sourceBunches) {
-          valueSet.add(value)
-        }
-
-        obs.writeRangedNumberSet(sourceSetLengthTable, minSource, maxConcept, valueSet)
-        minSource = newMinSource
 
         def writeCorrelationMap(map: Correlation): Unit = {
           val maxAlphabet = bufferSet.alphabets.max

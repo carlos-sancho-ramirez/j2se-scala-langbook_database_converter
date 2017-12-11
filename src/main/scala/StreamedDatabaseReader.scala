@@ -44,6 +44,21 @@ object StreamedDatabaseReader {
     }
   }
 
+  def readRangedNumberSet(ibs: InputBitStream, lengthTable: HuffmanTable[Integer], min: Int, max:Int): Set[Int] = {
+    val length = ibs.readHuffmanSymbol(lengthTable)
+    val result = scala.collection.mutable.Set[Int]()
+    var currentMin = min
+    var currentMax = max - length + 1
+    for (i <- 0 until length) {
+      val value = ibs.readRangedNumber(currentMin, currentMax)
+      result += value
+      currentMin = value + 1
+      currentMax += 1
+    }
+
+    result.toSet
+  }
+
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
     readSymbolArrays(bufferSet.symbolArrays, ibs)
     val symbolArraysLength = bufferSet.symbolArrays.length
@@ -159,20 +174,15 @@ object StreamedDatabaseReader {
 
     for (i <- 0 until bunchConceptsLength) {
       val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
-      val iterator = ibs.readRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept).iterator
-      val concepts = scala.collection.mutable.Set[Int]()
-      while (iterator.hasNext) {
-        concepts += iterator.next()
-      }
-
+      val concepts = readRangedNumberSet(ibs, bunchConceptsLengthTable, minValidConcept, maxConcept)
       val previousOpt = bufferSet.bunchConcepts.get(bunch)
       if (previousOpt.nonEmpty) {
-        if (concepts.toSet != previousOpt.get) {
+        if (concepts != previousOpt.get) {
           throw new AssertionError("Repeated key should match in value")
         }
       }
       else {
-        bufferSet.bunchConcepts(bunch) = concepts.toSet
+        bufferSet.bunchConcepts(bunch) = concepts
       }
     }
 
@@ -185,13 +195,8 @@ object StreamedDatabaseReader {
 
     for (i <- 0 until bunchAcceptationsLength) {
       val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
-      val iterator = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1).iterator
-      val acceptations = scala.collection.mutable.Set[Int]()
-      while (iterator.hasNext) {
-        acceptations += iterator.next()
-      }
-
-      bufferSet.bunchAcceptations(bunch) = acceptations.toSet
+      val acceptations = readRangedNumberSet(ibs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1)
+      bufferSet.bunchAcceptations(bunch) = acceptations
     }
 
     // Export agents
@@ -210,14 +215,9 @@ object StreamedDatabaseReader {
           minSource = StreamedDatabaseConstants.minValidConcept
         }
 
-        val sourceJavaSetIterator = ibs.readRangedNumberSet(sourceSetLengthTable, minSource, maxConcept).iterator()
-        val mutableSourceSet = scala.collection.mutable.Set[Int]()
-        while (sourceJavaSetIterator.hasNext) {
-          mutableSourceSet += sourceJavaSetIterator.next()
-        }
-
-        if (mutableSourceSet.nonEmpty) {
-          minSource = mutableSourceSet.min
+        val sourceSet = readRangedNumberSet(ibs, sourceSetLengthTable, minSource, maxConcept)
+        if (sourceSet.nonEmpty) {
+          minSource = sourceSet.min
         }
 
         def readCorrelationMap(): Correlation = {
@@ -247,7 +247,7 @@ object StreamedDatabaseReader {
 
         val fromStart = (matcher.nonEmpty || adder.nonEmpty) && ibs.readBoolean()
 
-        bufferSet.agents += Agent(targetBunch, mutableSourceSet.toSet, matcher, adder, rule, fromStart)
+        bufferSet.agents += Agent(targetBunch, sourceSet, matcher, adder, rule, fromStart)
 
         lastTarget = targetBunch
       }
