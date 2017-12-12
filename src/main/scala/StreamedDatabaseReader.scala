@@ -1,6 +1,7 @@
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{HuffmanTable, InputBitStream, NaturalNumberHuffmanTable}
+import sword.bitstream.InputBitStream
+import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
@@ -18,7 +19,9 @@ object StreamedDatabaseReader {
       val nat4Table = new NaturalNumberHuffmanTable(4)
 
       // Read Huffman table for chars
-      val huffmanTable = ibs.readHuffmanTable[Char](() => ibs.readChar(), prev => (ibs.readHuffmanSymbol(nat4Table) + prev + 1).toChar)
+      val huffmanTable = ibs.readHuffmanTable[Char](
+        () => ibs.readNaturalNumber().toChar,
+        prev => (ibs.readHuffmanSymbol(nat4Table) + prev + 1).toChar)
 
       // Read Symbol array length Huffman table
       val symbolArraysLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readHuffmanSymbol(nat3Table).toInt + prev + 1)
@@ -50,7 +53,8 @@ object StreamedDatabaseReader {
     var currentMin = min
     var currentMax = max - length + 1
     for (i <- 0 until length) {
-      val value = ibs.readRangedNumber(currentMin, currentMax)
+      val table = new RangedIntegerHuffmanTable(currentMin, currentMax)
+      val value = ibs.readHuffmanSymbol(table)
       result += value
       currentMin = value + 1
       currentMax += 1
@@ -69,8 +73,9 @@ object StreamedDatabaseReader {
       throw new AssertionError("Number of languages does not match")
     }
 
+    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
     for (language <- bufferSet.languages) {
-      if (bufferSet.symbolArrays(ibs.readRangedNumber(0, symbolArraysLength - 1)) != language.code) {
+      if (bufferSet.symbolArrays(ibs.readHuffmanSymbol(symbolArrayTable)) != language.code) {
         throw new AssertionError(s"Language code for '${language.code}' does not match")
       }
 
@@ -82,25 +87,27 @@ object StreamedDatabaseReader {
 
     // Export conversions
     val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
-    val conversionsLength = ibs.readNaturalNumber().toInt
+    val conversionsLength = ibs.readNaturalNumber()
     var minSourceAlphabet = minValidAlphabet
     var minTargetAlphabet = minValidAlphabet
     for (i <- 0 until conversionsLength) {
-      val sourceAlphabet = ibs.readRangedNumber(minSourceAlphabet, maxValidAlphabet)
+      val sourceTable = new RangedIntegerHuffmanTable(minSourceAlphabet, maxValidAlphabet)
+      val sourceAlphabet = ibs.readHuffmanSymbol(sourceTable).toInt
 
       if (minSourceAlphabet != sourceAlphabet) {
         minTargetAlphabet = minValidAlphabet
         minSourceAlphabet = sourceAlphabet
       }
 
-      val targetAlphabet = ibs.readRangedNumber(minTargetAlphabet, maxValidAlphabet)
+      val targetTable = new RangedIntegerHuffmanTable(minTargetAlphabet, maxValidAlphabet)
+      val targetAlphabet = ibs.readHuffmanSymbol(targetTable).toInt
       minTargetAlphabet = targetAlphabet + 1
 
-      val pairCount = ibs.readNaturalNumber().toInt
+      val pairCount = ibs.readNaturalNumber()
       val pairs = new ListBuffer[(Int, Int)]()
       for (j <- 0 until pairCount) {
-        val source = ibs.readRangedNumber(0, symbolArraysLength - 1)
-        val target = ibs.readRangedNumber(0, symbolArraysLength - 1)
+        val source = ibs.readHuffmanSymbol(symbolArrayTable)
+        val target = ibs.readHuffmanSymbol(symbolArrayTable)
         pairs += ((source, target))
       }
 
@@ -108,54 +115,59 @@ object StreamedDatabaseReader {
     }
 
     // Export the amount of words and concepts in order to range integers
-    val maxWord = ibs.readNaturalNumber().toInt - 1
-    val maxConcept = ibs.readNaturalNumber().toInt - 1
+    val maxWord = ibs.readNaturalNumber() - 1
+    val maxConcept = ibs.readNaturalNumber() - 1
+
+    lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
+    lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
 
     // Export acceptations
-    val acceptationsLength = ibs.readNaturalNumber().toInt
+    val acceptationsLength = ibs.readNaturalNumber()
     for (i <- 0 until acceptationsLength) {
-      val word = ibs.readRangedNumber(minValidWord, maxWord)
-      val concept = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val word = ibs.readHuffmanSymbol(wordTable)
+      val concept = ibs.readHuffmanSymbol(conceptTable)
       bufferSet.acceptations += Acceptation(word, concept)
     }
 
     // Export word representations
-    val wordRepresentationLength = ibs.readNaturalNumber().toInt
+    val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
+    val wordRepresentationLength = ibs.readNaturalNumber()
     for (i <- 0 until wordRepresentationLength) {
-      val word = ibs.readRangedNumber(minValidWord, maxWord)
-      val concept = ibs.readRangedNumber(minValidAlphabet, maxValidAlphabet)
-      val symbolArray = ibs.readRangedNumber(0, symbolArraysLength - 1)
+      val word = ibs.readHuffmanSymbol(wordTable)
+      val concept = ibs.readHuffmanSymbol(alphabetTable)
+      val symbolArray = ibs.readHuffmanSymbol(symbolArrayTable)
       bufferSet.wordRepresentations += WordRepresentation(word, concept, symbolArray)
     }
 
     // Export kanji-kana correlations
-    val kanjiKanaCorrelationsLength = ibs.readNaturalNumber().toInt
+    val kanjiKanaCorrelationsLength = ibs.readNaturalNumber()
+    lazy val kanjiKanaCorrelationTable = new RangedIntegerHuffmanTable(0, kanjiKanaCorrelationsLength - 1)
     for (i <- 0 until kanjiKanaCorrelationsLength) {
-      val kanji = ibs.readRangedNumber(0, symbolArraysLength - 1)
-      val kana = ibs.readRangedNumber(0, symbolArraysLength - 1)
+      val kanji = ibs.readHuffmanSymbol(symbolArrayTable)
+      val kana = ibs.readHuffmanSymbol(symbolArrayTable)
       bufferSet.kanjiKanaCorrelations += ((kanji, kana))
     }
 
     // Export jaWordCorrelations
-    val jaWordCorrelationsLength = ibs.readNaturalNumber().toInt
+    val jaWordCorrelationsLength = ibs.readNaturalNumber()
     if (jaWordCorrelationsLength > 0) {
-      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
-      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
-      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
+      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
 
       for (i <- 0 until jaWordCorrelationsLength) {
-        val wordId = ibs.readRangedNumber(minValidWord, maxWord)
+        val wordId = ibs.readHuffmanSymbol(wordTable)
         val reprCount = ibs.readHuffmanSymbol(correlationReprCountHuffmanTable)
 
         val reprs = for (j <- 0 until reprCount) yield {
           val conceptSetLength = ibs.readHuffmanSymbol(correlationConceptCountHuffmanTable)
           val concepts = for (k <- 0 until conceptSetLength) yield {
-            ibs.readRangedNumber(minValidConcept, maxConcept)
+            ibs.readHuffmanSymbol(conceptTable).toInt
           }
 
           val vectorLength = ibs.readHuffmanSymbol(correlationVectorLengthHuffmanTable)
           val vector = for (k <- 0 until vectorLength) yield {
-            ibs.readRangedNumber(0, kanjiKanaCorrelationsLength - 1)
+            ibs.readHuffmanSymbol(kanjiKanaCorrelationTable).toInt
           }
 
           (concepts.toSet, vector.toVector)
@@ -166,14 +178,14 @@ object StreamedDatabaseReader {
     }
 
     // Export bunchConcepts
-    val bunchConceptsLength = ibs.readNaturalNumber().toInt
+    val bunchConceptsLength = ibs.readNaturalNumber()
     val bunchConceptsLengthTable: HuffmanTable[Integer] = {
       if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber().toInt, prev => ibs.readNaturalNumber().toInt + prev + 1)
       else null
     }
 
     for (i <- 0 until bunchConceptsLength) {
-      val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val bunch = ibs.readHuffmanSymbol(conceptTable)
       val concepts = readRangedNumberSet(ibs, bunchConceptsLengthTable, minValidConcept, maxConcept)
       val previousOpt = bufferSet.bunchConcepts.get(bunch)
       if (previousOpt.nonEmpty) {
@@ -187,20 +199,20 @@ object StreamedDatabaseReader {
     }
 
     // Export bunchAcceptations
-    val bunchAcceptationsLength = ibs.readNaturalNumber().toInt
+    val bunchAcceptationsLength = ibs.readNaturalNumber()
     val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
       if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt), prev => ibs.readNaturalNumber().toInt + prev + 1)
       else null
     }
 
     for (i <- 0 until bunchAcceptationsLength) {
-      val bunch = ibs.readRangedNumber(minValidConcept, maxConcept)
+      val bunch = ibs.readHuffmanSymbol(conceptTable)
       val acceptations = readRangedNumberSet(ibs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1)
       bufferSet.bunchAcceptations(bunch) = acceptations
     }
 
     // Export agents
-    val agentsLength = ibs.readNaturalNumber().toInt
+    val agentsLength = ibs.readNaturalNumber()
     if (agentsLength > 0) {
       val nat3Table = new NaturalNumberHuffmanTable(3)
       val sourceSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
@@ -209,7 +221,8 @@ object StreamedDatabaseReader {
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
       for (i <- 0 until agentsLength) {
-        val targetBunch = ibs.readRangedNumber(lastTarget, maxConcept)
+        val targetTable = new RangedIntegerHuffmanTable(lastTarget, maxConcept)
+        val targetBunch = ibs.readHuffmanSymbol(targetTable).toInt
 
         if (targetBunch != lastTarget) {
           minSource = StreamedDatabaseConstants.minValidConcept
@@ -226,9 +239,10 @@ object StreamedDatabaseReader {
           val result = scala.collection.mutable.Map[Int, Int]()
           var minAlphabet = bufferSet.alphabets.min
           for (i <- 0 until mapLength) {
-            val alphabet = ibs.readRangedNumber(minAlphabet, maxAlphabet)
+            val table = new RangedIntegerHuffmanTable(minAlphabet, maxAlphabet)
+            val alphabet = ibs.readHuffmanSymbol(table)
             minAlphabet = alphabet + 1
-            val symbolArrayIndex = ibs.readRangedNumber(0, symbolArraysLength - 1)
+            val symbolArrayIndex = ibs.readHuffmanSymbol(symbolArrayTable)
             result(alphabet) = symbolArrayIndex
           }
 
@@ -240,7 +254,7 @@ object StreamedDatabaseReader {
 
         val rule = {
           if (adder.nonEmpty) {
-            ibs.readRangedNumber(StreamedDatabaseConstants.minValidConcept, maxConcept)
+            ibs.readHuffmanSymbol(conceptTable).toInt
           }
           else StreamedDatabaseConstants.nullBunchId
         }

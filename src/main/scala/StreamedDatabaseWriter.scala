@@ -3,7 +3,8 @@ import java.security.{DigestOutputStream, MessageDigest}
 
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{DefinedHuffmanTable, HuffmanTable, NaturalNumberHuffmanTable, OutputBitStream}
+import sword.bitstream.OutputBitStream
+import sword.bitstream.huffman._
 
 object StreamedDatabaseWriter {
 
@@ -30,7 +31,9 @@ object StreamedDatabaseWriter {
       val huffmanTable = DefinedHuffmanTable.withFrequencies(
         scala.collection.JavaConverters.mapAsJavaMap(
           charCountMap.mapValues(Integer.valueOf)), Character.compare _)
-      obs.writeHuffmanTable[Char](huffmanTable, obs.writeChar _, (prev, elem) => obs.writeHuffmanSymbol[Integer](nat4Table, elem - prev - 1))
+      obs.writeHuffmanTable[Char](huffmanTable,
+        ch => obs.writeNaturalNumber(ch),
+        (prev, elem) => obs.writeHuffmanSymbol[Integer](nat4Table, elem - prev - 1))
 
       // Include suitable bit alignment for symbolArray lengths Huffman table
       val symbolArrayLengthFreqMap = symbolArrays.foldLeft(new java.util.HashMap[Int, java.lang.Integer]()) { case (map, array) =>
@@ -59,7 +62,8 @@ object StreamedDatabaseWriter {
     var currentMax = max - length + 1
     var currentMin = min
     for (value <- sortedValues) {
-      obs.writeRangedNumber(currentMin, currentMax, value)
+      val table = new RangedIntegerHuffmanTable(currentMin, currentMax)
+      obs.writeHuffmanSymbol[Integer](table, value)
       currentMin = value + 1
       currentMax += 1
     }
@@ -74,9 +78,10 @@ object StreamedDatabaseWriter {
     val languagesLength = bufferSet.languages.size
     obs.writeNaturalNumber(languagesLength)
     var baseAlphabetCounter = StreamedDatabaseConstants.minValidAlphabet
+    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
     for (language <- bufferSet.languages) {
       val symbolArrayIndex = bufferSet.symbolArrays.indexOf(language.code)
-      obs.writeRangedNumber(0, symbolArraysLength - 1, symbolArrayIndex)
+      obs.writeHuffmanSymbol[Integer](symbolArrayTable, symbolArrayIndex)
       val alphabetCount = language.alphabets.size
 
       if (language.alphabets.min != baseAlphabetCounter && language.alphabets.max != baseAlphabetCounter + alphabetCount - 1) {
@@ -96,7 +101,8 @@ object StreamedDatabaseWriter {
     var minTargetAlphabet = minValidAlphabet
     for (conv <- sortedConversions) {
       val sourceAlphabet = conv.sourceAlphabet
-      obs.writeRangedNumber(minSourceAlphabet, maxValidAlphabet, sourceAlphabet)
+      val sourceAlphabetTable = new RangedIntegerHuffmanTable(minSourceAlphabet, maxValidAlphabet)
+      obs.writeHuffmanSymbol[Integer](sourceAlphabetTable, sourceAlphabet)
 
       if (minSourceAlphabet != sourceAlphabet) {
         minTargetAlphabet = minValidAlphabet
@@ -104,14 +110,15 @@ object StreamedDatabaseWriter {
       }
 
       val targetAlphabet = conv.targetAlphabet
-      obs.writeRangedNumber(minTargetAlphabet, maxValidAlphabet, targetAlphabet)
+      val targetAlphabetTable = new RangedIntegerHuffmanTable(minTargetAlphabet, maxValidAlphabet)
+      obs.writeHuffmanSymbol[Integer](targetAlphabetTable, targetAlphabet)
       minTargetAlphabet = targetAlphabet + 1
 
       val pairCount = conv.sources.length
       obs.writeNaturalNumber(pairCount)
       for (i <- 0 until pairCount) {
-        obs.writeRangedNumber(0, symbolArraysLength - 1, conv.sources(i))
-        obs.writeRangedNumber(0, symbolArraysLength - 1, conv.targets(i))
+        obs.writeHuffmanSymbol[Integer](symbolArrayTable, conv.sources(i))
+        obs.writeHuffmanSymbol[Integer](symbolArrayTable, conv.targets(i))
       }
     }
 
@@ -124,9 +131,11 @@ object StreamedDatabaseWriter {
     val acceptationsLength = bufferSet.acceptations.length
     println(s"Exporting acceptations ($acceptationsLength in total)")
     obs.writeNaturalNumber(acceptationsLength)
+    lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
+    lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
     for (acc <- bufferSet.acceptations) {
-      obs.writeRangedNumber(minValidWord, maxWord, acc.word)
-      obs.writeRangedNumber(minValidConcept, maxConcept, acc.concept)
+      obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
+      obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
     }
 
     // Export word representations
@@ -139,20 +148,22 @@ object StreamedDatabaseWriter {
 
     println(s"Exporting word representations ($wordRepresentationLength in total)")
     obs.writeNaturalNumber(wordRepresentationLength)
+    val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
     for (repr <- bufferSet.wordRepresentations) {
       if (repr.word >= minValidWord && repr.alphabet >= minValidAlphabet && repr.symbolArray >= 0) {
-        obs.writeRangedNumber(minValidWord, maxWord, repr.word)
-        obs.writeRangedNumber(minValidAlphabet, maxValidAlphabet, repr.alphabet)
-        obs.writeRangedNumber(0, symbolArraysLength - 1, repr.symbolArray)
+        obs.writeHuffmanSymbol[Integer](wordTable, repr.word)
+        obs.writeHuffmanSymbol[Integer](alphabetTable, repr.alphabet)
+        obs.writeHuffmanSymbol[Integer](symbolArrayTable, repr.symbolArray)
       }
     }
 
     // Export kanji-kana correlations
     val kanjiKanaCorrelationsLength = bufferSet.kanjiKanaCorrelations.length
+    lazy val kanjiKanaCorrelationTable = new RangedIntegerHuffmanTable(0, kanjiKanaCorrelationsLength - 1)
     obs.writeNaturalNumber(kanjiKanaCorrelationsLength)
     for ((kanji, kana) <- bufferSet.kanjiKanaCorrelations) {
-      obs.writeRangedNumber(0, symbolArraysLength - 1, kanji)
-      obs.writeRangedNumber(0, symbolArraysLength - 1, kana)
+      obs.writeHuffmanSymbol[Integer](symbolArrayTable, kanji)
+      obs.writeHuffmanSymbol[Integer](symbolArrayTable, kana)
     }
 
     // Export jaWordCorrelations
@@ -207,18 +218,18 @@ object StreamedDatabaseWriter {
       obs.writeHuffmanTable[Int](correlationVectorLengthHuffmanTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
 
       for ((wordId, set) <- bufferSet.jaWordCorrelations) {
-        obs.writeRangedNumber(minValidWord, maxWord, wordId)
+        obs.writeHuffmanSymbol[Integer](wordTable, wordId)
         obs.writeHuffmanSymbol(correlationReprCountHuffmanTable, set.size)
 
         for ((conceptSet, corrArray) <- set) {
           obs.writeHuffmanSymbol(correlationConceptCountHuffmanTable, conceptSet.size)
           for (concept <- conceptSet) {
-            obs.writeRangedNumber(minValidConcept, maxConcept, concept)
+            obs.writeHuffmanSymbol[Integer](conceptTable, concept)
           }
 
           obs.writeHuffmanSymbol(correlationVectorLengthHuffmanTable, corrArray.length)
           for (corr <- corrArray) {
-            obs.writeRangedNumber(0, kanjiKanaCorrelationsLength - 1, corr)
+            obs.writeHuffmanSymbol[Integer](kanjiKanaCorrelationTable, corr)
           }
         }
       }
@@ -243,7 +254,7 @@ object StreamedDatabaseWriter {
     else null
 
     for ((bunch, concepts) <- bufferSet.bunchConcepts) {
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
+      obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
       writeRangedNumberSet(obs, bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
     }
 
@@ -266,7 +277,7 @@ object StreamedDatabaseWriter {
     else null
 
     for ((bunch, accs) <- bufferSet.bunchAcceptations) {
-      obs.writeRangedNumber(minValidConcept, maxConcept, bunch)
+      obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
       writeRangedNumberSet(obs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1, accs)
     }
 
@@ -314,7 +325,8 @@ object StreamedDatabaseWriter {
       var minSource = StreamedDatabaseConstants.minValidConcept
       for (agent <- sortedAgents) {
         val newTarget = agent.targetBunch
-        obs.writeRangedNumber(lastTarget, maxConcept, newTarget)
+        val targetTable = new RangedIntegerHuffmanTable(lastTarget, maxConcept)
+        obs.writeHuffmanSymbol[Integer](targetTable, newTarget)
 
         if (newTarget != lastTarget) {
           minSource = StreamedDatabaseConstants.minValidConcept
@@ -335,10 +347,11 @@ object StreamedDatabaseWriter {
             val list = map.toList.sortWith(_._1 < _._1)
             var minAlphabet = bufferSet.alphabets.min
             for ((alphabet, symbolArrayIndex) <- list) {
-              obs.writeRangedNumber(minAlphabet, maxAlphabet, alphabet)
+              val table = new RangedIntegerHuffmanTable(minAlphabet, maxAlphabet)
+              obs.writeHuffmanSymbol[Integer](table, alphabet)
               minAlphabet = alphabet + 1
 
-              obs.writeRangedNumber(0, symbolArraysLength - 1, symbolArrayIndex)
+              obs.writeHuffmanSymbol[Integer](symbolArrayTable, symbolArrayIndex)
             }
           }
         }
@@ -347,7 +360,7 @@ object StreamedDatabaseWriter {
         writeCorrelationMap(agent.adder)
 
         if (agent.adder.nonEmpty) {
-          obs.writeRangedNumber(StreamedDatabaseConstants.minValidConcept, maxConcept, agent.rule)
+          obs.writeHuffmanSymbol[Integer](conceptTable, agent.rule)
         }
 
         if (agent.matcher.nonEmpty || agent.adder.nonEmpty) {
