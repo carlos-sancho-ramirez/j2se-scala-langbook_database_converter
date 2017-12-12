@@ -3,7 +3,7 @@ import java.security.{DigestOutputStream, MessageDigest}
 
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.OutputBitStream
+import sword.bitstream.{HuffmanTableLengthEncoder, OutputBitStream}
 import sword.bitstream.huffman._
 
 object StreamedDatabaseWriter {
@@ -13,6 +13,14 @@ object StreamedDatabaseWriter {
   case class RichOutputBitStream(obs: OutputBitStream) {
     def writeNaturalNumber(value: Int) = {
       obs.writeHuffmanSymbol[Integer](naturalNumberTable, value)
+    }
+
+    def writeRangedNumberSet(lengthTable: HuffmanTable[Integer], min: Int, max: Int, set: Set[Int]): Unit = {
+      val javaSet = new java.util.HashSet[Integer]()
+      for (value <- set) {
+        javaSet.add(value)
+      }
+      obs.writeRangedNumberSet(new HuffmanTableLengthEncoder(obs, lengthTable), min, max, javaSet)
     }
   }
 
@@ -62,20 +70,6 @@ object StreamedDatabaseWriter {
           obs.writeHuffmanSymbol(huffmanTable, ch)
         }
       }
-    }
-  }
-
-  def writeRangedNumberSet(obs: OutputBitStream, lengthTable: HuffmanTable[Integer], min: Int, max: Int, set: Set[Int]): Unit = {
-    val length = set.size
-    obs.writeHuffmanSymbol[Integer](lengthTable, length)
-    val sortedValues = set.toVector.sorted
-    var currentMax = max - length + 1
-    var currentMin = min
-    for (value <- sortedValues) {
-      val table = new RangedIntegerHuffmanTable(currentMin, currentMax)
-      obs.writeHuffmanSymbol[Integer](table, value)
-      currentMin = value + 1
-      currentMax += 1
     }
   }
 
@@ -265,7 +259,7 @@ object StreamedDatabaseWriter {
 
     for ((bunch, concepts) <- bufferSet.bunchConcepts) {
       obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
-      writeRangedNumberSet(obs, bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
+      obs.writeRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
     }
 
     // Export bunchAcceptations
@@ -288,7 +282,7 @@ object StreamedDatabaseWriter {
 
     for ((bunch, accs) <- bufferSet.bunchAcceptations) {
       obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
-      writeRangedNumberSet(obs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1, accs)
+      obs.writeRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1, accs)
     }
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
@@ -343,7 +337,7 @@ object StreamedDatabaseWriter {
         }
 
         val sourceBunches = agent.sourceBunches
-        writeRangedNumberSet(obs, sourceSetLengthTable, minSource, maxConcept, sourceBunches)
+        obs.writeRangedNumberSet(sourceSetLengthTable, minSource, maxConcept, sourceBunches)
         minSource = {
           if (sourceBunches.isEmpty) minSource
           else sourceBunches.min

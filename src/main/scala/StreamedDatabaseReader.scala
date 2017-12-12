@@ -1,7 +1,7 @@
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
 import StreamedDatabaseWriter.RichOutputBitStream
-import sword.bitstream.{InputBitStream, OutputBitStream}
+import sword.bitstream.{HuffmanTableLengthDecoder, InputBitStream, OutputBitStream}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
@@ -13,6 +13,16 @@ object StreamedDatabaseReader {
   case class RichInputBitStream(ibs: InputBitStream) {
     def readNaturalNumber(): Int = {
       ibs.readHuffmanSymbol(naturalNumberTable).toInt
+    }
+
+    def readRangedNumberSet(lengthTable: HuffmanTable[Integer], min: Int, max:Int): Set[Int] = {
+      val iterator = ibs.readRangedNumberSet(new HuffmanTableLengthDecoder(ibs, lengthTable), min, max).iterator
+      val set = scala.collection.mutable.Set[Int]()
+      while (iterator.hasNext) {
+        set += iterator.next()
+      }
+
+      set.toSet
     }
   }
 
@@ -56,22 +66,6 @@ object StreamedDatabaseReader {
         }
       }
     }
-  }
-
-  def readRangedNumberSet(ibs: InputBitStream, lengthTable: HuffmanTable[Integer], min: Int, max:Int): Set[Int] = {
-    val length = ibs.readHuffmanSymbol(lengthTable)
-    val result = scala.collection.mutable.Set[Int]()
-    var currentMin = min
-    var currentMax = max - length + 1
-    for (i <- 0 until length) {
-      val table = new RangedIntegerHuffmanTable(currentMin, currentMax)
-      val value = ibs.readHuffmanSymbol(table)
-      result += value
-      currentMin = value + 1
-      currentMax += 1
-    }
-
-    result.toSet
   }
 
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
@@ -197,7 +191,7 @@ object StreamedDatabaseReader {
 
     for (i <- 0 until bunchConceptsLength) {
       val bunch = ibs.readHuffmanSymbol(conceptTable)
-      val concepts = readRangedNumberSet(ibs, bunchConceptsLengthTable, minValidConcept, maxConcept)
+      val concepts = ibs.readRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept)
       val previousOpt = bufferSet.bunchConcepts.get(bunch)
       if (previousOpt.nonEmpty) {
         if (concepts != previousOpt.get) {
@@ -218,7 +212,7 @@ object StreamedDatabaseReader {
 
     for (i <- 0 until bunchAcceptationsLength) {
       val bunch = ibs.readHuffmanSymbol(conceptTable)
-      val acceptations = readRangedNumberSet(ibs, bunchAcceptationsLengthTable, 0, acceptationsLength - 1)
+      val acceptations = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1)
       bufferSet.bunchAcceptations(bunch) = acceptations
     }
 
@@ -239,7 +233,7 @@ object StreamedDatabaseReader {
           minSource = StreamedDatabaseConstants.minValidConcept
         }
 
-        val sourceSet = readRangedNumberSet(ibs, sourceSetLengthTable, minSource, maxConcept)
+        val sourceSet = ibs.readRangedNumberSet(sourceSetLengthTable, minSource, maxConcept)
         if (sourceSet.nonEmpty) {
           minSource = sourceSet.min
         }
