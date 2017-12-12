@@ -73,18 +73,18 @@ object StreamedDatabaseWriter {
     }
   }
 
-  def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
-    val symbolArraysLength = bufferSet.symbolArrays.length
-    writeSymbolArrays(bufferSet.symbolArrays, obs)
-
-    // Export languages
+  private def writeLanguagesAndAlphabets(
+      languages: scala.collection.Seq[Main.Language],
+      alphabets: scala.collection.Seq[Int],
+      symbolArrayTable: RangedIntegerHuffmanTable,
+      symbolArrays: scala.collection.IndexedSeq[String],
+      obs: OutputBitStream): Unit = {
     val nat2Table = new NaturalNumberHuffmanTable(2)
-    val languagesLength = bufferSet.languages.size
+    val languagesLength = languages.size
     obs.writeNaturalNumber(languagesLength)
     var baseAlphabetCounter = StreamedDatabaseConstants.minValidAlphabet
-    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
-    for (language <- bufferSet.languages) {
-      val symbolArrayIndex = bufferSet.symbolArrays.indexOf(language.code)
+    for (language <- languages) {
+      val symbolArrayIndex = symbolArrays.indexOf(language.code)
       obs.writeHuffmanSymbol[Integer](symbolArrayTable, symbolArrayIndex)
       val alphabetCount = language.alphabets.size
 
@@ -94,11 +94,15 @@ object StreamedDatabaseWriter {
       obs.writeHuffmanSymbol[Integer](nat2Table, alphabetCount)
       baseAlphabetCounter += alphabetCount
     }
+  }
 
-    // Export conversions
-    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
-    val sortedConversions = bufferSet.conversions.toList.sortWith((a,b) => a.sourceAlphabet < b.sourceAlphabet ||
-        a.sourceAlphabet == b.sourceAlphabet && a.targetAlphabet < b.targetAlphabet)
+  private def writeConversions(
+      conversions: scala.collection.Set[Conversion],
+      maxValidAlphabet: Int,
+      symbolArrayTable: HuffmanTable[Integer],
+      obs: OutputBitStream): Unit = {
+    val sortedConversions = conversions.toList.sortWith((a,b) => a.sourceAlphabet < b.sourceAlphabet ||
+      a.sourceAlphabet == b.sourceAlphabet && a.targetAlphabet < b.targetAlphabet)
 
     obs.writeNaturalNumber(sortedConversions.size)
     var minSourceAlphabet = minValidAlphabet
@@ -125,6 +129,19 @@ object StreamedDatabaseWriter {
         obs.writeHuffmanSymbol[Integer](symbolArrayTable, conv.targets(i))
       }
     }
+  }
+
+  def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
+    val symbolArraysLength = bufferSet.symbolArrays.length
+    writeSymbolArrays(bufferSet.symbolArrays, obs)
+
+    // Export languages
+    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
+    writeLanguagesAndAlphabets(bufferSet.languages, bufferSet.alphabets, symbolArrayTable, bufferSet.symbolArrays, obs)
+
+    // Export conversions
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+    writeConversions(bufferSet.conversions, maxValidAlphabet, symbolArrayTable, obs)
 
     // Export the amount of words and concepts in order to range integers
     val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes

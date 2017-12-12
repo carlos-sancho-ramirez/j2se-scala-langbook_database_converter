@@ -68,19 +68,19 @@ object StreamedDatabaseReader {
     }
   }
 
-  def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
-    readSymbolArrays(bufferSet.symbolArrays, ibs)
-    val symbolArraysLength = bufferSet.symbolArrays.length
-
-    // Ensure same languages (as they are constant here)
+  private def ensureSameLanguagesAndAlphabets(
+      languages: scala.collection.Seq[Main.Language],
+      alphabets: scala.collection.Seq[Int],
+      symbolArrayTable: RangedIntegerHuffmanTable,
+      symbolArrays: scala.collection.IndexedSeq[String],
+      ibs: InputBitStream): Unit = {
     val nat2Table = new NaturalNumberHuffmanTable(2)
-    if (ibs.readNaturalNumber() != bufferSet.languages.size) {
+    if (ibs.readNaturalNumber() != languages.size) {
       throw new AssertionError("Number of languages does not match")
     }
 
-    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
-    for (language <- bufferSet.languages) {
-      if (bufferSet.symbolArrays(ibs.readHuffmanSymbol(symbolArrayTable)) != language.code) {
+    for (language <- languages) {
+      if (symbolArrays(ibs.readHuffmanSymbol(symbolArrayTable)) != language.code) {
         throw new AssertionError(s"Language code for '${language.code}' does not match")
       }
 
@@ -89,12 +89,16 @@ object StreamedDatabaseReader {
         throw new AssertionError(s"Number of alphabets does not match for language '${language.code}'. Read $alphabetCount")
       }
     }
+  }
 
-    // Export conversions
-    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+  private def readConversions(
+      maxValidAlphabet: Int,
+      symbolArrayTable: HuffmanTable[Integer],
+      ibs: InputBitStream): Set[Conversion] = {
     val conversionsLength = ibs.readNaturalNumber()
     var minSourceAlphabet = minValidAlphabet
     var minTargetAlphabet = minValidAlphabet
+    val result = scala.collection.mutable.Set[Conversion]()
     for (i <- 0 until conversionsLength) {
       val sourceTable = new RangedIntegerHuffmanTable(minSourceAlphabet, maxValidAlphabet)
       val sourceAlphabet = ibs.readHuffmanSymbol(sourceTable).toInt
@@ -116,8 +120,23 @@ object StreamedDatabaseReader {
         pairs += ((source, target))
       }
 
-      bufferSet.conversions += Conversion(sourceAlphabet, targetAlphabet, pairs)
+      result += Conversion(sourceAlphabet, targetAlphabet, pairs)
     }
+
+    result.toSet
+  }
+
+  def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
+    readSymbolArrays(bufferSet.symbolArrays, ibs)
+    val symbolArraysLength = bufferSet.symbolArrays.length
+
+    // Ensure same languages (as they are constant here)
+    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
+    ensureSameLanguagesAndAlphabets(bufferSet.languages, bufferSet.alphabets, symbolArrayTable, bufferSet.symbolArrays, ibs)
+
+    // Export conversions
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+    bufferSet.conversions ++= readConversions(maxValidAlphabet, symbolArrayTable, ibs)
 
     // Export the amount of words and concepts in order to range integers
     val maxWord = ibs.readNaturalNumber() - 1
