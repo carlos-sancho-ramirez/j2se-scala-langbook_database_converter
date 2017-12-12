@@ -10,7 +10,7 @@ resolvers += "jitpack" at "https://jitpack.io"
 
 libraryDependencies ++= Seq(
   "org.xerial" % "sqlite-jdbc" % "3.19.3",
-  "com.github.carlos-sancho-ramirez" % "lib-java-bitstream" % "ba31dcc2c9d6840e9a29d33a74adbb64541eb52e",
+  "com.github.carlos-sancho-ramirez" % "lib-java-bitstream" % "8076c43a5e8b7f97c3e42ad3940f15ab87183e9b",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 )
 

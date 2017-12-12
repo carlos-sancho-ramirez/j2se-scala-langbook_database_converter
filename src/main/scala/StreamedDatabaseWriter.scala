@@ -8,6 +8,16 @@ import sword.bitstream.huffman._
 
 object StreamedDatabaseWriter {
 
+  val naturalNumberTable = new NaturalNumberHuffmanTable(8)
+
+  case class RichOutputBitStream(obs: OutputBitStream) {
+    def writeNaturalNumber(value: Int) = {
+      obs.writeHuffmanSymbol[Integer](naturalNumberTable, value)
+    }
+  }
+
+  implicit def outputBitStream2RichOutputBitStream(obs: OutputBitStream) :RichOutputBitStream = RichOutputBitStream(obs)
+
   def writeSymbolArrays(symbolArrays: scala.collection.IndexedSeq[String], obs: OutputBitStream): Unit = {
 
     // Include the number of symbol arrays

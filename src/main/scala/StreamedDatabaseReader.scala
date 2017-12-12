@@ -1,11 +1,22 @@
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.InputBitStream
+import StreamedDatabaseWriter.RichOutputBitStream
+import sword.bitstream.{InputBitStream, OutputBitStream}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 object StreamedDatabaseReader {
+
+  val naturalNumberTable = new NaturalNumberHuffmanTable(8)
+
+  case class RichInputBitStream(ibs: InputBitStream) {
+    def readNaturalNumber(): Int = {
+      ibs.readHuffmanSymbol(naturalNumberTable).toInt
+    }
+  }
+
+  implicit def inputBitStream2RichInputBitStream(ibs: InputBitStream) :RichInputBitStream = RichInputBitStream(ibs)
 
   def readSymbolArrays(symbolArrays: ArrayBuffer[String], ibs: InputBitStream): Unit = {
 
