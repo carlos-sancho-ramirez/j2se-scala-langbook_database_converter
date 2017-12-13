@@ -131,29 +131,18 @@ object StreamedDatabaseWriter {
     }
   }
 
-  def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
-    val symbolArraysLength = bufferSet.symbolArrays.length
-    writeSymbolArrays(bufferSet.symbolArrays, obs)
-
-    // Export languages
-    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
-    writeLanguagesAndAlphabets(bufferSet.languages, bufferSet.alphabets, symbolArrayTable, bufferSet.symbolArrays, obs)
-
-    // Export conversions
-    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
-    writeConversions(bufferSet.conversions, maxValidAlphabet, symbolArrayTable, obs)
-
-    // Export the amount of words and concepts in order to range integers
-    val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
-    obs.writeNaturalNumber(maxWord + 1)
-    obs.writeNaturalNumber(maxConcept + 1)
+  private def writeAcceptations(
+      bufferSet: BufferSet,
+      wordTable: => RangedIntegerHuffmanTable,
+      conceptTable: => RangedIntegerHuffmanTable,
+      symbolArrayTable: RangedIntegerHuffmanTable,
+      alphabetTable: RangedIntegerHuffmanTable,
+      obs: OutputBitStream): Unit = {
 
     // Export acceptations
     val acceptationsLength = bufferSet.acceptations.length
     println(s"Exporting acceptations ($acceptationsLength in total)")
     obs.writeNaturalNumber(acceptationsLength)
-    lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
-    lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
     for (acc <- bufferSet.acceptations) {
       obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
       obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
@@ -169,7 +158,6 @@ object StreamedDatabaseWriter {
 
     println(s"Exporting word representations ($wordRepresentationLength in total)")
     obs.writeNaturalNumber(wordRepresentationLength)
-    val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
     for (repr <- bufferSet.wordRepresentations) {
       if (repr.word >= minValidWord && repr.alphabet >= minValidAlphabet && repr.symbolArray >= 0) {
         obs.writeHuffmanSymbol[Integer](wordTable, repr.word)
@@ -196,7 +184,7 @@ object StreamedDatabaseWriter {
         correlationReprCountHuffmanTable,
         correlationConceptCountHuffmanTable,
         correlationVectorLengthHuffmanTable
-      ) = {
+        ) = {
         val reprCount = new java.util.HashMap[Int, Integer]()
         val lengths = new java.util.HashMap[Int, Integer]()
         val conceptCount = new java.util.HashMap[Int, Integer]()
@@ -231,7 +219,7 @@ object StreamedDatabaseWriter {
           DefinedHuffmanTable.withFrequencies(reprCount, Integer.compare _),
           DefinedHuffmanTable.withFrequencies(conceptCount, Integer.compare _),
           DefinedHuffmanTable.withFrequencies(lengths, Integer.compare _)
-        )
+          )
       }
 
       obs.writeHuffmanTable[Int](correlationReprCountHuffmanTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
@@ -255,6 +243,31 @@ object StreamedDatabaseWriter {
         }
       }
     }
+  }
+
+  def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
+    val symbolArraysLength = bufferSet.symbolArrays.length
+    writeSymbolArrays(bufferSet.symbolArrays, obs)
+
+    // Export languages
+    val symbolArrayTable = new RangedIntegerHuffmanTable(0, symbolArraysLength - 1)
+    writeLanguagesAndAlphabets(bufferSet.languages, bufferSet.alphabets, symbolArrayTable, bufferSet.symbolArrays, obs)
+
+    // Export conversions
+    val maxValidAlphabet = minValidAlphabet + bufferSet.alphabets.size - 1
+    writeConversions(bufferSet.conversions, maxValidAlphabet, symbolArrayTable, obs)
+
+    // Export the amount of words and concepts in order to range integers
+    val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
+    lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
+    lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
+    obs.writeNaturalNumber(maxWord + 1)
+    obs.writeNaturalNumber(maxConcept + 1)
+
+    // Export acceptations
+    val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
+    val acceptationsLength = bufferSet.acceptations.length
+    writeAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, alphabetTable, obs)
 
     // Export bunchConcepts
     val bunchConceptsLength = bufferSet.bunchConcepts.size
