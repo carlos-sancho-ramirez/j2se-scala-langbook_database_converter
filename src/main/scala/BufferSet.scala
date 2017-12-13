@@ -4,6 +4,7 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
+case class NewAcceptation(word: Int, concept: Int, correlation: Int)
 
 /** Data for Agents.
   *
@@ -67,18 +68,17 @@ object BufferSet {
   * Contain all mutable collections representing in memory the current database state.
   */
 class BufferSet {
+  val symbolArrays = ArrayBuffer[String]()
+
   val alphabets = Main.alphabets
   val languages = Main.languages
-  val wordRepresentations = ArrayBuffer[WordRepresentation]()
-  val acceptations = ArrayBuffer[Acceptation]()
-  val symbolArrays = ArrayBuffer[String]()
-  val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
-  val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
+
   val conversions = scala.collection.mutable.Set[Conversion]()
 
   // This is currently really specific for Japanese, this must be adapted for any alphabet
   val kanjiKanaCorrelations = ArrayBuffer[(Int /* kanji symbol array */, Int /* kana symbol array */)]()
-
+  val wordRepresentations = ArrayBuffer[WordRepresentation]()
+  val acceptations = ArrayBuffer[Acceptation]()
   // This is currently really specific for Japanese.
   // So far Japanese is the only language using correlations, thus for now it is assumed that
   // source alphabet is always kanji and target alphabet is always kana
@@ -86,10 +86,17 @@ class BufferSet {
   //val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
+  val correlations = ArrayBuffer[Map[Int /* alphabet */, Int /* symbolArray */]]()
+  val correlationArrays = ArrayBuffer[Seq[Int /* correlation index */]]()
+  val newAcceptations = ArrayBuffer[NewAcceptation]()
+
+  val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
+  val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
+
   val agents = scala.collection.mutable.Set[Agent]()
 
   override def hashCode: Int = {
-    symbolArrays.length + acceptations.length + bunchAcceptations.size
+    symbolArrays.length + acceptations.length + bunchAcceptations.size + newAcceptations.length
   }
 
   override def equals(other: Any): Boolean = {
@@ -102,6 +109,9 @@ class BufferSet {
       wordRepresentations == that.wordRepresentations &&
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
       jaWordCorrelations == that.jaWordCorrelations &&
+      newAcceptations == that.newAcceptations &&
+      correlations == that.correlations &&
+      correlationArrays == that.correlationArrays &&
       bunchConcepts == that.bunchConcepts &&
       bunchAcceptations == that.bunchAcceptations &&
       agents == that.agents
@@ -136,6 +146,64 @@ class BufferSet {
     }
   }
 
+  /**
+    * Checks if the given correlation already exists in the list.
+    * If so, the index is returned. If not it is appended into
+    * the list and the index is returned.
+    */
+  def addCorrelationForIndex(correlation: Map[Int, Int]): Int = {
+    if (correlation == null) {
+      throw new IllegalArgumentException()
+    }
+
+    // This should be optimized indexing the string instead of check if it exists one by one.
+    var found = -1
+    var i = 0
+    val size = correlations.size
+    while (found < 0 && i < size) {
+      if (correlations(i) == correlation) found = i
+      i += 1
+    }
+
+    if (found >= 0) found
+    else {
+      correlations += correlation
+      size
+    }
+  }
+
+  /**
+    * Checks if the given correlation already exists in the list.
+    * If so, the index is returned. If not it is appended into
+    * the list and the index is returned.
+    */
+  def addCorrelationForString(correlation: Map[Int, String]): Int = {
+    if (correlation == null) {
+      throw new IllegalArgumentException()
+    }
+
+    addCorrelationForIndex(correlation.mapValues(addSymbolArray))
+  }
+
+  def addCorrelationArray(array: scala.collection.Seq[Map[Int, String]]) = {
+    val arr = array.map(addCorrelationForString)
+
+    // This should be optimized indexing the string instead of check if it exists one by one.
+    var found = -1
+    var i = 0
+    val size = correlationArrays.size
+    while (found < 0 && i < size) {
+      if (correlationArrays(i) == arr) found = i
+      i += 1
+    }
+
+    if (found >= 0) found
+    else {
+      correlationArrays += arr
+      size
+    }
+  }
+
   def charCountMap: Map[Char, Int] = {
     symbolArrays.foldLeft(scala.collection.mutable.Map[Char, Int]()) {
       (map, string) =>
@@ -152,6 +220,13 @@ class BufferSet {
     val wordMin = StreamedDatabaseConstants.minValidWord - 1
     val conceptMin = StreamedDatabaseConstants.minValidConcept - 1
     val (maxWordFromAcceptations, maxConceptFromAcceptations) = acceptations.foldLeft((wordMin, conceptMin)) {
+      case ((word, concept), acc) =>
+        val maxWord = if (acc.word > word) acc.word else word
+        val maxConcept = if (acc.concept > concept) acc.concept else concept
+        (maxWord, maxConcept)
+    }
+
+    val (maxWordFromNewAcceptations, maxConceptFromNewAcceptations) = newAcceptations.foldLeft((wordMin, conceptMin)) {
       case ((word, concept), acc) =>
         val maxWord = if (acc.word > word) acc.word else word
         val maxConcept = if (acc.concept > concept) acc.concept else concept
@@ -189,6 +264,7 @@ class BufferSet {
 
     val maxConcept = Set(
       maxConceptFromAcceptations,
+      maxConceptFromNewAcceptations,
       maxConceptFromAlphabets,
       maxConceptFromLanguages,
       maxConceptFromBunchConcepts,
@@ -198,7 +274,12 @@ class BufferSet {
       maxConceptFromAgentSources
     ).max
 
-    (maxWordFromAcceptations, maxConcept)
+    val maxAcceptation = Set(
+      maxWordFromAcceptations,
+      maxWordFromNewAcceptations
+    ).max
+
+    (maxAcceptation, maxConcept)
   }
 
   // Include symbol arrays for language identifiers

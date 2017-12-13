@@ -165,26 +165,35 @@ object Main {
     var wordCount = dbWordBase
     var conceptCount = dbConceptBase
 
-    def appendEnglishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
-      val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
+    def appendEnglishAcceptation(symbolArray: String, concept: Int)(implicit bufferSet: BufferSet): Unit = {
+      val newWord = wordCount
+
+      bufferSet.wordRepresentations.append(WordRepresentation(newWord, enAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      bufferSet.acceptations += Acceptation(newWord, concept)
+
+      val correlationId = bufferSet.addCorrelationArray(Vector(Map(enAlphabet -> symbolArray)))
+      bufferSet.newAcceptations += NewAcceptation(newWord, concept, correlationId)
+
       wordCount += 1
-      enWords += newIndex
-      newIndex
+      enWords += newWord
     }
 
     /**
       * Add a new Spanish word in the list and returns its id
       */
-    def appendSpanishWord(symbolArray: String)(implicit bufferSet: BufferSet): Int = {
-      val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+    def appendSpanishAcceptation(symbolArray: String, concept: Int)(implicit bufferSet: BufferSet): Unit = {
+      val newWord = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newWord, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      bufferSet.acceptations += Acceptation(newWord, concept)
+
+      val correlationId = bufferSet.addCorrelationArray(Vector(Map(esAlphabet -> symbolArray)))
+      bufferSet.newAcceptations += NewAcceptation(newWord, concept, correlationId)
+
       wordCount += 1
-      esWords += newIndex
-      newIndex
+      esWords += newWord
     }
 
-    def appendJapaneseWord(concepts: Set[Int], correlation: Vector[(String, String)]): Int = {
+    def appendJapaneseAcceptation(concept: Int, correlation: Vector[(String, String)]): Unit = {
       val kanjiKanaDiffer = correlation.exists { case (str1, str2) => str1 != str2 }
 
       val wordIndex = wordCount
@@ -203,33 +212,35 @@ object Main {
           }
         }
 
-        bufferSet.jaWordCorrelations(wordIndex) = Set((concepts, vector))
+        bufferSet.jaWordCorrelations(wordIndex) = Set((Set(concept), vector))
       }
       else {
         val str = correlation.map(_._1).mkString("")
         val index = bufferSet.addSymbolArray(str)
         bufferSet.wordRepresentations += WordRepresentation(wordIndex, kanaAlphabet, index)
       }
+      bufferSet.acceptations += Acceptation(wordIndex, concept)
+
+      val array = correlation.map { case (kanji, kana) =>
+          Map(kanjiAlphabet -> kanji, kanaAlphabet -> kana)
+      }
+      bufferSet.newAcceptations += NewAcceptation(wordIndex, concept, bufferSet.addCorrelationArray(array))
 
       wordCount += 1
       jaWords += wordIndex
-      wordIndex
     }
 
     def registerWordWithConcept(concept: Int, en: String, es: String, correlation: Vector[(String, String)]): Unit = {
       if (en != null) {
-        val word = appendEnglishWord(en)
-        bufferSet.acceptations += Acceptation(word, concept)
+        appendEnglishAcceptation(en, concept)
       }
 
       if (es != null) {
-        val word = appendSpanishWord(es)
-        bufferSet.acceptations += Acceptation(word, concept)
+        appendSpanishAcceptation(es, concept)
       }
 
       if (correlation != null) {
-        val word = appendJapaneseWord(Set(concept), correlation)
-        bufferSet.acceptations += Acceptation(word, concept)
+        appendJapaneseAcceptation(concept, correlation)
       }
     }
 
