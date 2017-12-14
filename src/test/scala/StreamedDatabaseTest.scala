@@ -15,20 +15,25 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       "third word"
     )
 
+    val bufferSet1 = new BufferSet()
+    for (array <- symbolArrays) {
+      bufferSet1.addSymbolArray(array)
+    }
+
     val baos = new ByteArrayOutputStream
     val obs = new OutputBitStream(baos)
 
-    StreamedDatabaseWriter.writeSymbolArrays(symbolArrays, obs)
+    StreamedDatabaseWriter.writeSymbolArrays(bufferSet1.symbolArrays, obs)
     obs.close()
 
     val array = baos.toByteArray
     val bais = new ByteArrayInputStream(array)
     val ibs = new InputBitStream(bais)
 
-    val readSymbolArrays = new ArrayBuffer[String]()
-    StreamedDatabaseReader.readSymbolArrays(readSymbolArrays, ibs)
+    val bufferSet2 = new BufferSet()
+    StreamedDatabaseReader.readSymbolArrays(bufferSet2, ibs)
 
-    readSymbolArrays shouldBe symbolArrays
+    bufferSet2.symbolArrays shouldBe bufferSet1.symbolArrays
   }
 
   private def checkWriteAndRead(sourceSet: BufferSet): Unit = {
@@ -72,13 +77,14 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
   it should "match on write and read acceptations and its representations even if only include symbol arrays" in {
     val sourceSet = new BufferSet()
 
-    sourceSet.symbolArrays ++= Vector(
+    val symbolArrays = Vector(
       "importante",
       "cabello",
       "papel",
       "dios"
     )
 
+    for (array <- symbolArrays) sourceSet.addSymbolArray(array)
     checkWriteAndRead(sourceSet)
   }
 
@@ -88,7 +94,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val wordBase = StreamedDatabaseConstants.minValidWord
     val conceptBase = StreamedDatabaseConstants.minValidConcept
 
-    sourceSet.symbolArrays ++= Vector(
+    val symbolArrays = Vector(
       "大事", // 0
       "だいじ",
       "大切",
@@ -102,6 +108,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       "papel", // 10
       "dios"
     )
+    for (array <- symbolArrays) sourceSet.addSymbolArray(array)
 
     sourceSet.acceptations ++= Vector(
       Acceptation(wordBase + 0, conceptBase + 0), //だいじ
@@ -133,7 +140,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
   it should "match on write and read acceptations, its representations and correlations" in {
     val sourceSet = new BufferSet()
 
-    sourceSet.symbolArrays ++= Vector(
+    val symbolArrays = Vector(
       "大事", // 0
       "だいじ",
       "大切",
@@ -154,6 +161,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       "たい",
       "せつ"
     )
+    for (array <- symbolArrays) sourceSet.addSymbolArray(array)
 
     val wordBase = StreamedDatabaseConstants.minValidWord
     val conceptBase = StreamedDatabaseConstants.minValidConcept

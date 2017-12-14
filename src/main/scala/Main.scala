@@ -172,7 +172,7 @@ object Main {
       bufferSet.acceptations += Acceptation(newWord, concept)
 
       val correlationId = bufferSet.addCorrelationArray(Vector(Map(enAlphabet -> symbolArray)))
-      bufferSet.newAcceptations += NewAcceptation(newWord, concept, correlationId)
+      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
 
       wordCount += 1
       enWords += newWord
@@ -187,7 +187,7 @@ object Main {
       bufferSet.acceptations += Acceptation(newWord, concept)
 
       val correlationId = bufferSet.addCorrelationArray(Vector(Map(esAlphabet -> symbolArray)))
-      bufferSet.newAcceptations += NewAcceptation(newWord, concept, correlationId)
+      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
 
       wordCount += 1
       esWords += newWord
@@ -224,7 +224,7 @@ object Main {
       val array = correlation.map { case (kanji, kana) =>
           Map(kanjiAlphabet -> kanji, kanaAlphabet -> kana)
       }
-      bufferSet.newAcceptations += NewAcceptation(wordIndex, concept, bufferSet.addCorrelationArray(array))
+      bufferSet.addAcceptation(NewAcceptation(wordIndex, concept, bufferSet.addCorrelationArray(array)))
 
       wordCount += 1
       jaWords += wordIndex

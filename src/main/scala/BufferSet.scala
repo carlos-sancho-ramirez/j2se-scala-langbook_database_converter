@@ -68,7 +68,12 @@ object BufferSet {
   * Contain all mutable collections representing in memory the current database state.
   */
 class BufferSet {
-  val symbolArrays = ArrayBuffer[String]()
+  private val hashTableSize = 256
+  private val hashTableMask = hashTableSize - 1
+
+  private val _symbolArrays = ArrayBuffer[String]()
+  private val _symbolArrayHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
+  def symbolArrays: scala.collection.IndexedSeq[String] = _symbolArrays
 
   val alphabets = Main.alphabets
   val languages = Main.languages
@@ -86,9 +91,17 @@ class BufferSet {
   //val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
-  val correlations = ArrayBuffer[Map[Int /* alphabet */, Int /* symbolArray */]]()
-  val correlationArrays = ArrayBuffer[Seq[Int /* correlation index */]]()
-  val newAcceptations = ArrayBuffer[NewAcceptation]()
+  private val _correlations = ArrayBuffer[Map[Int /* alphabet */, Int /* symbolArray */]]()
+  private val _correlationHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
+  def correlations: scala.collection.IndexedSeq[Map[Int, Int]] = _correlations
+
+  private val _correlationArrays = ArrayBuffer[Seq[Int /* correlation index */]]()
+  private val _correlationArrayHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
+  def correlationArrays: scala.collection.IndexedSeq[Seq[Int]] = _correlationArrays
+
+  private val _newAcceptations = ArrayBuffer[NewAcceptation]()
+  private val _newAcceptationHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
+  def newAcceptations: scala.collection.IndexedSeq[NewAcceptation] = _newAcceptations
 
   val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
   val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
@@ -96,7 +109,7 @@ class BufferSet {
   val agents = scala.collection.mutable.Set[Agent]()
 
   override def hashCode: Int = {
-    symbolArrays.length + acceptations.length + bunchAcceptations.size + newAcceptations.length
+    _symbolArrays.length + acceptations.length + bunchAcceptations.size + _newAcceptations.length
   }
 
   override def equals(other: Any): Boolean = {
@@ -109,9 +122,9 @@ class BufferSet {
       wordRepresentations == that.wordRepresentations &&
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
       jaWordCorrelations == that.jaWordCorrelations &&
-      newAcceptations == that.newAcceptations &&
-      correlations == that.correlations &&
-      correlationArrays == that.correlationArrays &&
+      _newAcceptations == that._newAcceptations &&
+      _correlations == that._correlations &&
+      _correlationArrays == that._correlationArrays &&
       bunchConcepts == that.bunchConcepts &&
       bunchAcceptations == that.bunchAcceptations &&
       agents == that.agents
@@ -120,19 +133,24 @@ class BufferSet {
 
   override def toString: String = conversions.toString
 
-  private def insertIfNotPresent[T](array: ArrayBuffer[T], element: T): Int = {
-    // This should be optimized indexing somehow instead of traversing the array
+  private def insertIfNotPresent[T](array: ArrayBuffer[T], hashes: scala.collection.mutable.IndexedSeq[Set[Int]], element: T): Int = {
+    val shortHash = element.hashCode & hashTableMask
+    val candidates = hashes(shortHash)
+
     var found = -1
-    var i = 0
     val size = array.size
-    while (found < 0 && i < size) {
-      if (array(i) == element) found = i
-      i += 1
+    candidates.exists { index =>
+      if (array(index) == element) {
+        found = index
+        true
+      }
+      else false
     }
 
     if (found >= 0) found
     else {
       array += element
+      hashes(shortHash) = candidates + size
       size
     }
   }
@@ -147,7 +165,7 @@ class BufferSet {
       throw new IllegalArgumentException()
     }
 
-    insertIfNotPresent(symbolArrays, symbolArray)
+    insertIfNotPresent(_symbolArrays, _symbolArrayHashes, symbolArray)
   }
 
   /**
@@ -160,7 +178,7 @@ class BufferSet {
       throw new IllegalArgumentException()
     }
 
-    insertIfNotPresent(correlations, correlation)
+    insertIfNotPresent(_correlations, _correlationHashes, correlation)
   }
 
   /**
@@ -177,7 +195,7 @@ class BufferSet {
   }
 
   private def addCorrelationArrayForIntArray(array: scala.collection.Seq[Int]) = {
-    insertIfNotPresent(correlationArrays, array)
+    insertIfNotPresent(_correlationArrays, _correlationArrayHashes, array)
   }
 
   def addCorrelationArrayForIndex(array: scala.collection.Seq[Map[Int, Int]]) = {
@@ -191,7 +209,7 @@ class BufferSet {
   }
 
   def addAcceptation(acc: NewAcceptation) = {
-    insertIfNotPresent(newAcceptations, acc)
+    insertIfNotPresent(_newAcceptations, _newAcceptationHashes, acc)
   }
 
   def charCountMap: Map[Char, Int] = {
@@ -216,7 +234,7 @@ class BufferSet {
         (maxWord, maxConcept)
     }
 
-    val (maxWordFromNewAcceptations, maxConceptFromNewAcceptations) = newAcceptations.foldLeft((wordMin, conceptMin)) {
+    val (maxWordFromNewAcceptations, maxConceptFromNewAcceptations) = _newAcceptations.foldLeft((wordMin, conceptMin)) {
       case ((word, concept), acc) =>
         val maxWord = if (acc.word > word) acc.word else word
         val maxConcept = if (acc.concept > concept) acc.concept else concept

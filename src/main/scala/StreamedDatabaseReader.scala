@@ -27,10 +27,10 @@ object StreamedDatabaseReader {
 
   implicit def inputBitStream2RichInputBitStream(ibs: InputBitStream) :RichInputBitStream = RichInputBitStream(ibs)
 
-  def readSymbolArrays(symbolArrays: ArrayBuffer[String], ibs: InputBitStream): Unit = {
+  def readSymbolArrays(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
 
     // Read the number of symbol arrays
-    val symbolArraysInitLength = symbolArrays.size
+    val symbolArraysInitLength = bufferSet.symbolArrays.size
     val symbolArraysLength = ibs.readNaturalNumber()
 
     if (symbolArraysLength > 0) {
@@ -56,12 +56,12 @@ object StreamedDatabaseReader {
 
         val str = strBuilder.toString
         if (i < symbolArraysInitLength) {
-          if (symbolArrays(i) != str) {
-            throw new AssertionError(s"Predefined symbol arrays are not respected. At index $i, the expectation was '${symbolArrays(i)}' but was '$str'")
+          if (bufferSet.symbolArrays(i) != str) {
+            throw new AssertionError(s"Predefined symbol arrays are not respected. At index $i, the expectation was '${bufferSet.symbolArrays(i)}' but was '$str'")
           }
         }
         else {
-          symbolArrays += str.toString
+          bufferSet.addSymbolArray(str.toString)
         }
       }
     }
@@ -188,7 +188,7 @@ object StreamedDatabaseReader {
   }
 
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
-    readSymbolArrays(bufferSet.symbolArrays, ibs)
+    readSymbolArrays(bufferSet, ibs)
     val symbolArraysLength = bufferSet.symbolArrays.length
 
     // Ensure same languages (as they are constant here)
