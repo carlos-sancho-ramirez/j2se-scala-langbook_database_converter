@@ -54,7 +54,7 @@ class MainTest extends FlatSpec with Matchers {
   }
 
   behavior of "Main.convertCollections"
-  it should "include a word and its acceptation properly" in {
+  it should "include a word and its acceptation properly (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray = "家"
@@ -93,6 +93,36 @@ class MainTest extends FlatSpec with Matchers {
     corrSet.size shouldBe 1
     corrSet.head._1 shouldBe Set(concept)
     corrSet.head._2 shouldBe Vector(kanjiKanaCorrelationIndex)
+  }
+
+  it should "include a word and its acceptation properly" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray = "家"
+    val kanaArray = "いえ"
+    val esArray = "casa"
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation("家", "いえ")
+      )
+    )
+
+    val oldWords = Iterable(OldWord(1, kanjiArray, kanaArray, esArray))
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    val kanjiIndex = bufferSet.symbolArrays findUniqueIndexOf kanjiArray
+    val kanaIndex = bufferSet.symbolArrays findUniqueIndexOf kanaArray
+    val esIndex = bufferSet.symbolArrays findUniqueIndexOf esArray
+
+    val jaCorrelationIndex = bufferSet.correlations findUniqueIndexOf Map(Main.kanjiAlphabet -> kanjiIndex, Main.kanaAlphabet -> kanaIndex)
+    val esCorrelationIndex = bufferSet.correlations findUniqueIndexOf Map(Main.esAlphabet -> esIndex)
+    val jaCorrelationArrayIndex = bufferSet.correlationArrays findUniqueIndexOf Vector(jaCorrelationIndex)
+    val esCorrelationArrayIndex = bufferSet.correlationArrays findUniqueIndexOf Vector(esCorrelationIndex)
+    val jaAccIndex = bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == jaCorrelationArrayIndex)
+    val esAccIndex = bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == esCorrelationArrayIndex)
+    bufferSet.newAcceptations(jaAccIndex).concept shouldBe bufferSet.newAcceptations(esAccIndex).concept
+    bufferSet.newAcceptations(jaAccIndex).word should not be bufferSet.newAcceptations(esAccIndex).word
   }
 
   it should "include a word with multiple Spanish words" in {

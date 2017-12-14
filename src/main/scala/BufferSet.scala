@@ -120,6 +120,23 @@ class BufferSet {
 
   override def toString: String = conversions.toString
 
+  private def insertIfNotPresent[T](array: ArrayBuffer[T], element: T): Int = {
+    // This should be optimized indexing somehow instead of traversing the array
+    var found = -1
+    var i = 0
+    val size = array.size
+    while (found < 0 && i < size) {
+      if (array(i) == element) found = i
+      i += 1
+    }
+
+    if (found >= 0) found
+    else {
+      array += element
+      size
+    }
+  }
+
   /**
     * Checks if the given symbol array already exist in the list.
     * If so, the index is returned. If not it is appended into
@@ -130,20 +147,7 @@ class BufferSet {
       throw new IllegalArgumentException()
     }
 
-    // This should be optimized indexing the string instead of check if it exists one by one.
-    var found = -1
-    var i = 0
-    val size = symbolArrays.size
-    while (found < 0 && i < size) {
-      if (symbolArrays(i) == symbolArray) found = i
-      i += 1
-    }
-
-    if (found >= 0) found
-    else {
-      symbolArrays += symbolArray
-      size
-    }
+    insertIfNotPresent(symbolArrays, symbolArray)
   }
 
   /**
@@ -156,20 +160,7 @@ class BufferSet {
       throw new IllegalArgumentException()
     }
 
-    // This should be optimized indexing the string instead of check if it exists one by one.
-    var found = -1
-    var i = 0
-    val size = correlations.size
-    while (found < 0 && i < size) {
-      if (correlations(i) == correlation) found = i
-      i += 1
-    }
-
-    if (found >= 0) found
-    else {
-      correlations += correlation
-      size
-    }
+    insertIfNotPresent(correlations, correlation)
   }
 
   /**
@@ -185,23 +176,22 @@ class BufferSet {
     addCorrelationForIndex(correlation.mapValues(addSymbolArray))
   }
 
+  private def addCorrelationArrayForIntArray(array: scala.collection.Seq[Int]) = {
+    insertIfNotPresent(correlationArrays, array)
+  }
+
+  def addCorrelationArrayForIndex(array: scala.collection.Seq[Map[Int, Int]]) = {
+    val arr = array.map(addCorrelationForIndex)
+    addCorrelationArrayForIntArray(arr)
+  }
+
   def addCorrelationArray(array: scala.collection.Seq[Map[Int, String]]) = {
     val arr = array.map(addCorrelationForString)
+    addCorrelationArrayForIntArray(arr)
+  }
 
-    // This should be optimized indexing the string instead of check if it exists one by one.
-    var found = -1
-    var i = 0
-    val size = correlationArrays.size
-    while (found < 0 && i < size) {
-      if (correlationArrays(i) == arr) found = i
-      i += 1
-    }
-
-    if (found >= 0) found
-    else {
-      correlationArrays += arr
-      size
-    }
+  def addAcceptation(acc: NewAcceptation) = {
+    insertIfNotPresent(newAcceptations, acc)
   }
 
   def charCountMap: Map[Char, Int] = {

@@ -349,17 +349,8 @@ object Main {
     wordCount += 1
     conceptCount += 1
 
-    def appendSpanishWord(symbolArray: String): Int = {
-      val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
-      wordCount += 1
-      esWords += newIndex
-      newIndex
-    }
-
     val oldNewMap = scala.collection.mutable.Map[Int, Int]()
     val oldWordAccMap = scala.collection.mutable.Map[Int /* old word id */, Set[Int] /* Accs */]()
-
     val kanaWordMap = scala.collection.mutable.Map[String, Int]()
 
     for (repr <- bufferSet.wordRepresentations if repr.alphabet == Main.kanaAlphabet) {
@@ -383,6 +374,14 @@ object Main {
       }
 
       kanaWordMap(strSet.head) = wordId
+    }
+
+    def appendSpanishWord(symbolArray: String): Int = {
+      val newIndex = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      wordCount += 1
+      esWords += newIndex
+      newIndex
     }
 
     for (oldWord <- oldWords) {
@@ -474,7 +473,7 @@ object Main {
 
     // Exclude all correlations whose kanji and kana matches
     val filteredOldWordPronunciations = oldWordPronunciations.filter { case (_ ,seq) =>
-        seq.exists(pronunciation => pronunciation.kanji != pronunciation.kana)
+      seq.exists(pronunciation => pronunciation.kanji != pronunciation.kana)
     }
 
     // Include correlations
@@ -493,6 +492,7 @@ object Main {
         newSeq += conversionIndex
       }
 
+      val correlationArray = bufferSet.addCorrelationArray(seq.map(pron => Map(Main.kanjiAlphabet -> pron.kanji, Main.kanaAlphabet -> pron.kana)))
       val wordId = oldNewMap(oldWordId)
       val set = bufferSet.jaWordCorrelations.getOrElse(wordId, Set())
 
@@ -506,6 +506,27 @@ object Main {
       }
 
       bufferSet.jaWordCorrelations(oldNewMap(oldWordId)) = set + ((conceptSet, newSeq.toVector))
+    }
+
+    for (jaWordCorr <- bufferSet.jaWordCorrelations) {
+      val wordId = jaWordCorr._1
+      for ((concepts, vector) <- jaWordCorr._2) {
+        val arrayRef = bufferSet.addCorrelationArrayForIndex(vector.map { kanjiKanaCorr =>
+          val (kanji, kana) = bufferSet.kanjiKanaCorrelations(kanjiKanaCorr)
+          Map(Main.kanjiAlphabet -> kanji, Main.kanaAlphabet -> kana)
+        })
+
+        for (concept <- concepts) {
+          bufferSet.addAcceptation(NewAcceptation(wordId, concept, arrayRef))
+        }
+      }
+    }
+
+    for (WordRepresentation(word, alphabet, symbolArray) <- bufferSet.wordRepresentations) {
+      lazy val correlationArray = bufferSet.addCorrelationArrayForIndex(Vector(Map(alphabet -> symbolArray)))
+      for (acc <- bufferSet.acceptations if acc.word == word) {
+        bufferSet.addAcceptation(NewAcceptation(word, acc.concept, correlationArray))
+      }
     }
 
     oldWordAccMap.toMap
