@@ -95,6 +95,31 @@ class MainTest extends FlatSpec with Matchers {
     corrSet.head._2 shouldBe Vector(kanjiKanaCorrelationIndex)
   }
 
+  private def findUniqueSpanishCorrelationArrayIndexOf(str: String)(implicit bufferSet: BufferSet): Int = {
+    val index = bufferSet.symbolArrays findUniqueIndexOf str
+    val correlationIndex = bufferSet.correlations findUniqueIndexOf Map(Main.esAlphabet -> index)
+    bufferSet.correlationArrays findUniqueIndexOf Vector(correlationIndex)
+  }
+
+  private def findUniqueSpanishAcceptationIndex(str: String)(implicit bufferSet: BufferSet): Int = {
+    val correlationArray = findUniqueSpanishCorrelationArrayIndexOf(str)
+    bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == correlationArray)
+  }
+
+  private def findUniqueJapaneseCorrelationArrayIndexOf(corr: (String, String)*)(implicit bufferSet: BufferSet): Int = {
+    val corrArray = corr.map { case (kanji, kana) =>
+      val kanjiIndex = bufferSet.symbolArrays findUniqueIndexOf kanji
+      val kanaIndex = bufferSet.symbolArrays findUniqueIndexOf kana
+      bufferSet.correlations findUniqueIndexOf Map(Main.kanjiAlphabet -> kanjiIndex, Main.kanaAlphabet -> kanaIndex)
+    }
+    bufferSet.correlationArrays findUniqueIndexOf corrArray
+  }
+
+  private def findUniqueJapaneseAcceptationIndex(corr: (String, String)*)(implicit bufferSet: BufferSet): Int = {
+    val corrArrayIndex = findUniqueJapaneseCorrelationArrayIndexOf(corr: _*)
+    bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == corrArrayIndex)
+  }
+
   it should "include a word and its acceptation properly" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
@@ -111,21 +136,13 @@ class MainTest extends FlatSpec with Matchers {
     val oldWords = Iterable(OldWord(1, kanjiArray, kanaArray, esArray))
     Main.convertWords(oldWords, oldWordPronunciations)
 
-    val kanjiIndex = bufferSet.symbolArrays findUniqueIndexOf kanjiArray
-    val kanaIndex = bufferSet.symbolArrays findUniqueIndexOf kanaArray
-    val esIndex = bufferSet.symbolArrays findUniqueIndexOf esArray
-
-    val jaCorrelationIndex = bufferSet.correlations findUniqueIndexOf Map(Main.kanjiAlphabet -> kanjiIndex, Main.kanaAlphabet -> kanaIndex)
-    val esCorrelationIndex = bufferSet.correlations findUniqueIndexOf Map(Main.esAlphabet -> esIndex)
-    val jaCorrelationArrayIndex = bufferSet.correlationArrays findUniqueIndexOf Vector(jaCorrelationIndex)
-    val esCorrelationArrayIndex = bufferSet.correlationArrays findUniqueIndexOf Vector(esCorrelationIndex)
-    val jaAccIndex = bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == jaCorrelationArrayIndex)
-    val esAccIndex = bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == esCorrelationArrayIndex)
+    val jaAccIndex = findUniqueJapaneseAcceptationIndex(kanjiArray -> kanaArray)
+    val esAccIndex = findUniqueSpanishAcceptationIndex(esArray)
     bufferSet.newAcceptations(jaAccIndex).concept shouldBe bufferSet.newAcceptations(esAccIndex).concept
     bufferSet.newAcceptations(jaAccIndex).word should not be bufferSet.newAcceptations(esAccIndex).word
   }
 
-  it should "include a word with multiple Spanish words" in {
+  it should "include a word with multiple Spanish words (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val esArrays = Array("recibir", "realizar (un exámen, classes...)", "aceptar (un reto)")
@@ -197,7 +214,46 @@ class MainTest extends FlatSpec with Matchers {
     corrSet.head._2 shouldBe Vector(kanjiKanaCorrelationIndex1, kanjiKanaCorrelationIndex2, kanjiKanaCorrelationIndex3)
   }
 
-  it should "include a word with multiple Spanish concepts" in {
+  it should "include a word with multiple Spanish words" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val esArrays = Array("recibir", "realizar (un exámen, classes...)", "aceptar (un reto)")
+    val kanjiArray = "受ける"
+    val kanaArray = "うける"
+    val esArray = esArrays.mkString(", ")
+
+    val kanji1 = "受"
+    val kana1 = "う"
+    val str2 = "け"
+    val str3 = "る"
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation(kanji1, kana1),
+        OldPronunciation(str2, str2),
+        OldPronunciation(str3, str3)
+      )
+    )
+
+    val oldWords = Iterable(OldWord(1, kanjiArray, kanaArray, esArray))
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    bufferSet.symbolArrays indexOf kanjiArray should be < 0
+    bufferSet.symbolArrays indexOf kanaArray should be < 0
+
+    val jaAcc = findUniqueJapaneseAcceptationIndex(kanji1 -> kana1, str2 -> str2, str3 -> str3)
+    val concept = bufferSet.newAcceptations(jaAcc).concept
+
+    val esAcc1 = findUniqueSpanishAcceptationIndex(esArrays(0))
+    val esAcc2 = findUniqueSpanishAcceptationIndex(esArrays(1))
+    val esAcc3 = findUniqueSpanishAcceptationIndex(esArrays(2))
+
+    bufferSet.newAcceptations(esAcc1).concept shouldBe concept
+    bufferSet.newAcceptations(esAcc2).concept shouldBe concept
+    bufferSet.newAcceptations(esAcc3).concept shouldBe concept
+  }
+
+  it should "include a word with multiple Spanish concepts (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val esArray1 = "caramelo"
@@ -271,7 +327,56 @@ class MainTest extends FlatSpec with Matchers {
     corrSet.head._2 shouldBe Vector(kanjiKanaCorrelationIndex1, kanjiKanaCorrelationIndex2)
   }
 
-  it should "reuse Spanish words already included" in {
+  it should "include a word with multiple Spanish concepts" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val esArray1 = "caramelo"
+    val esArray2 = "pastel"
+    val esArray3 = "pasta"
+    val kanjiArray = "菓子"
+    val kanaArray = "かし"
+    val esArray = esArray1 + "; " + esArray2 + ", " + esArray3
+
+    val kanji1 = "菓"
+    val kana1 = "か"
+    val kanji2 = "子"
+    val kana2 = "し"
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation(kanji1, kana1),
+        OldPronunciation(kanji2, kana2)
+      )
+    )
+
+    val oldWords = Iterable(OldWord(1, kanjiArray, kanaArray, esArray))
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    bufferSet.symbolArrays indexOf kanjiArray should be < 0
+    bufferSet.symbolArrays indexOf kanaArray should be < 0
+
+    val jaCorrelationArrayIndex = findUniqueJapaneseCorrelationArrayIndexOf(kanji1 -> kana1, kanji2 -> kana2)
+    val jaAccIndex1 = bufferSet.newAcceptations findIndexWhere(_.correlation == jaCorrelationArrayIndex)
+    val jaAccIndex2 = bufferSet.newAcceptations findIndexWhere(_.correlation == jaCorrelationArrayIndex, jaAccIndex1 + 1)
+    bufferSet.newAcceptations indexWhere(_.correlation == jaCorrelationArrayIndex, jaAccIndex2 + 1) should be < 0
+
+    val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
+    val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
+    val esAccIndex3 = findUniqueSpanishAcceptationIndex(esArray3)
+
+    val concept1 = bufferSet.newAcceptations(esAccIndex1).concept
+    val concept2 = bufferSet.newAcceptations(esAccIndex2).concept
+    bufferSet.newAcceptations(esAccIndex3).concept shouldBe concept2
+
+    if (bufferSet.newAcceptations(jaAccIndex1).concept == concept1) {
+      bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept2
+    }
+    else {
+      bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept1
+      bufferSet.newAcceptations(jaAccIndex1).concept shouldBe concept2
+    }
+  }
+
+  it should "reuse Spanish words already included (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray1 = "大事"
@@ -348,7 +453,57 @@ class MainTest extends FlatSpec with Matchers {
     }
   }
 
-  it should "include 2 accRepresentations when only matching its pronunciation" in {
+  it should "reuse Spanish words already included" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1 = "大事"
+    val kanaArray1 = "だいじ"
+    val kanjiArray2 = "大切"
+    val kanaArray2 = "たいせつ"
+    val esArray = "importante"
+
+    val kanji11 = "大"
+    val kana11 = "だい"
+    val kanji12 = "事"
+    val kana12 = "じ"
+
+    val kanji21 = "大"
+    val kana21 = "たい"
+    val kanji22 = "切"
+    val kana22 = "せつ"
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation(kanji11, kana11),
+        OldPronunciation(kanji12, kana12)
+      ),
+      2 -> IndexedSeq(
+        OldPronunciation(kanji21, kana21),
+        OldPronunciation(kanji22, kana22)
+      )
+    )
+
+    val oldWords = Iterable(
+      OldWord(1, kanjiArray1, kanaArray1, esArray),
+      OldWord(2, kanjiArray2, kanaArray2, esArray)
+    )
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    bufferSet.symbolArrays indexOf kanjiArray1 should be < 0
+    bufferSet.symbolArrays indexOf kanaArray1 should be < 0
+    bufferSet.symbolArrays indexOf kanjiArray2 should be < 0
+    bufferSet.symbolArrays indexOf kanaArray2 should be < 0
+
+    val esAccIndex = findUniqueSpanishAcceptationIndex(esArray)
+    val concept = bufferSet.newAcceptations(esAccIndex).concept
+
+    val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanji11 -> kana11, kanji12 -> kana12)
+    val jaAccIndex2 = findUniqueJapaneseAcceptationIndex(kanji21 -> kana21, kanji22 -> kana22)
+    bufferSet.newAcceptations(jaAccIndex1).concept shouldBe concept
+    bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept
+  }
+
+  it should "include 2 accRepresentations when only matching its pronunciation (old)" in {
     implicit val bufferSet = new BufferSet()
 
     val kanjiArray1 = "早い"
@@ -426,6 +581,57 @@ class MainTest extends FlatSpec with Matchers {
       corrSeq(1)._1 shouldBe Set(concept1)
       corrSeq(1)._2 shouldBe Vector(correlationA1, correlationA2)
     }
+  }
+
+  it should "include 2 acceptations for same Japanese word" in {
+    implicit val bufferSet = new BufferSet()
+
+    val kanji1A = "早"
+    val kanji1B = "速"
+    val kana1 = "はや"
+    val kana2 = "い"
+
+    val kanjiArray1 = kanji1A + kana2
+    val kanjiArray2 = kanji1B + kana2
+    val kanaArray = kana1 + kana2
+    val esArray1 = "temprano"
+    val esArray2 = "rápido"
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation(kanji1A, kana1),
+        OldPronunciation(kana2, kana2)
+      ),
+      2 -> IndexedSeq(
+        OldPronunciation(kanji1B, kana1),
+        OldPronunciation(kana2, kana2)
+      )
+    )
+
+    val oldWords = Iterable(
+      OldWord(1, kanjiArray1, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2)
+    )
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    bufferSet.symbolArrays indexOf kanjiArray1 should be < 0
+    bufferSet.symbolArrays indexOf kanjiArray2 should be < 0
+    bufferSet.symbolArrays indexOf kanaArray should be < 0
+
+    val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanji1A -> kana1, kana2 -> kana2)
+    val jaAccIndex2 = findUniqueJapaneseAcceptationIndex(kanji1B -> kana1, kana2 -> kana2)
+    val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
+    val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
+
+    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
+    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
+
+    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
+    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    concept1 should not be concept2
+
+    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
+    bufferSet.newAcceptations(esAccIndex2).concept shouldBe concept2
   }
 
   it should "include 3 accRepresentations when 3 words match its pronunciation" in {
