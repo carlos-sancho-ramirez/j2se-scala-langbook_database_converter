@@ -634,7 +634,7 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.newAcceptations(esAccIndex2).concept shouldBe concept2
   }
 
-  it should "include 3 accRepresentations when 3 words match its pronunciation" in {
+  it should "include 3 accRepresentations when 3 words match its pronunciation (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray1 = "髪"
@@ -718,7 +718,66 @@ class MainTest extends FlatSpec with Matchers {
     corrSeq(2)._2 shouldBe Vector(correlation3)
   }
 
-  private def checkSameJapaneseWordWithMoreThan2Concepts(shifter: Iterable[OldWord] => Iterable[OldWord]) = {
+  it should "include 3 acceptations for the same Japanese word" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1 = "髪"
+    val kanjiArray2 = "紙"
+    val kanjiArray3 = "神"
+    val kanaArray = "かみ"
+    val esArray1 = "cabello"
+    val esArray2 = "papel"
+    val esArray3 = "dios"
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(OldPronunciation(kanjiArray1, kanaArray)),
+      2 -> IndexedSeq(OldPronunciation(kanjiArray2, kanaArray)),
+      3 -> IndexedSeq(OldPronunciation(kanjiArray3, kanaArray))
+    )
+
+    val oldWords = Iterable(
+      OldWord(1, kanjiArray1, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2),
+      OldWord(3, kanjiArray3, kanaArray, esArray3)
+    )
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanjiArray1 -> kanaArray)
+    val jaAccIndex2 = findUniqueJapaneseAcceptationIndex(kanjiArray2 -> kanaArray)
+    val jaAccIndex3 = findUniqueJapaneseAcceptationIndex(kanjiArray3 -> kanaArray)
+    val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
+    val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
+    val esAccIndex3 = findUniqueSpanishAcceptationIndex(esArray3)
+
+    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
+    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
+
+    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
+    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    concept1 should not be concept2
+
+    bufferSet.newAcceptations(jaAccIndex3).word shouldBe jaWord
+    val concept3 = bufferSet.newAcceptations(jaAccIndex3).concept
+    concept1 should not be concept3
+    concept2 should not be concept3
+
+    val esWord1 = bufferSet.newAcceptations(esAccIndex1).word
+    esWord1 should not be jaWord
+    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
+
+    val esWord2 = bufferSet.newAcceptations(esAccIndex2).word
+    esWord2 should not be jaWord
+    esWord2 should not be esWord1
+    bufferSet.newAcceptations(esAccIndex2).concept shouldBe concept2
+
+    val esWord3 = bufferSet.newAcceptations(esAccIndex3).word
+    esWord3 should not be jaWord
+    esWord3 should not be esWord1
+    esWord3 should not be esWord2
+    bufferSet.newAcceptations(esAccIndex3).concept shouldBe concept3
+  }
+
+  private def checkSameJapaneseWordWithMoreThan2ConceptsOld(shifter: Iterable[OldWord] => Iterable[OldWord]) = {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanjiArray1 = "訪ねる"
@@ -816,6 +875,87 @@ class MainTest extends FlatSpec with Matchers {
       corrSeq.head._2 shouldBe Vector(correlation2a, correlationB)
       corrSeq(1)._1 shouldBe Set(concept1)
       corrSeq(1)._2 shouldBe Vector(correlation1a, correlationB)
+    }
+  }
+
+  it should "include same Japanese word with more than 2 concepts (old)" in {
+    checkSameJapaneseWordWithMoreThan2ConceptsOld(a => a)
+  }
+
+  it should "include same Japanese word with more than 2 concepts (order reversed) (old)" in {
+    checkSameJapaneseWordWithMoreThan2ConceptsOld(a => a.foldLeft(List[OldWord]())((list, e) => e :: list))
+  }
+
+  private def checkSameJapaneseWordWithMoreThan2Concepts(shifter: Iterable[OldWord] => Iterable[OldWord]) = {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanjiArray1a = "訪"
+    val kanjiArray2a = "尋"
+    val kanaArrayA = "たず"
+    val kanaArrayB = "ねる"
+
+    val kanjiArray1 = kanjiArray1a + kanaArrayB
+    val kanjiArray2 = kanjiArray2a + kanaArrayB
+    val kanaArray = kanaArrayA + kanaArrayB
+    val esArray1 = "visitar"
+    val esArrays2 = Array(
+      Array("preguntar", "indagar"),
+      Array("buscar", "investigar")
+    )
+    val esArray2 = esArrays2.map(_.mkString(", ")).mkString("; ")
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(
+        OldPronunciation(kanjiArray1a, kanaArrayA),
+        OldPronunciation(kanaArrayB, kanaArrayB)
+      ),
+      2 -> IndexedSeq(
+        OldPronunciation(kanjiArray2a, kanaArrayA),
+        OldPronunciation(kanaArrayB, kanaArrayB)
+      )
+    )
+
+    val oldWords = shifter(Iterable(
+      OldWord(1, kanjiArray1, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2)
+    ))
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    bufferSet.symbolArrays indexOf kanjiArray1 should be < 0
+    bufferSet.symbolArrays indexOf kanjiArray2 should be < 0
+    bufferSet.symbolArrays indexOf kanaArray should be < 0
+
+    val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanjiArray1a -> kanaArrayA, kanaArrayB -> kanaArrayB)
+    val jaCorrIndex2 = findUniqueJapaneseCorrelationArrayIndexOf(kanjiArray2a -> kanaArrayA, kanaArrayB -> kanaArrayB)
+    val jaAccIndex2a = bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2)
+    val jaAccIndex2b = bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2, jaAccIndex2a + 1)
+    bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2, jaAccIndex2b + 1) should be < 0
+
+    val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
+    val esAccIndex2a1 = findUniqueSpanishAcceptationIndex(esArrays2(0)(0))
+    val esAccIndex2a2 = findUniqueSpanishAcceptationIndex(esArrays2(0)(1))
+    val esAccIndex2b1 = findUniqueSpanishAcceptationIndex(esArrays2(1)(0))
+    val esAccIndex2b2 = findUniqueSpanishAcceptationIndex(esArrays2(1)(1))
+
+    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
+    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
+
+    val concept2a = bufferSet.newAcceptations(esAccIndex2a1).concept
+    bufferSet.newAcceptations(esAccIndex2a2).concept shouldBe concept2a
+
+    val concept2b = bufferSet.newAcceptations(esAccIndex2b1).concept
+    bufferSet.newAcceptations(esAccIndex2b2).concept shouldBe concept2b
+
+    concept1 should not be concept2a
+    concept1 should not be concept2b
+    concept2a should not be concept2b
+
+    if (bufferSet.newAcceptations(jaAccIndex2a).concept == concept2a) {
+      bufferSet.newAcceptations(jaAccIndex2b).concept shouldBe concept2b
+    }
+    else {
+      bufferSet.newAcceptations(jaAccIndex2b).concept shouldBe concept2a
+      bufferSet.newAcceptations(jaAccIndex2a).concept shouldBe concept2b
     }
   }
 
