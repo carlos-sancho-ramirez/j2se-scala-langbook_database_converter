@@ -523,9 +523,19 @@ object Main {
     }
 
     for (WordRepresentation(word, alphabet, symbolArray) <- bufferSet.wordRepresentations) {
-      lazy val correlationArray = bufferSet.addCorrelationArrayForIndex(Vector(Map(alphabet -> symbolArray)))
+      lazy val correlationArray = {
+        if (alphabet == Main.kanaAlphabet) {
+          bufferSet.addCorrelationArrayForIndex(Vector(Map(Main.kanaAlphabet -> symbolArray, Main.kanjiAlphabet -> symbolArray)))
+        }
+        else {
+          bufferSet.addCorrelationArrayForIndex(Vector(Map(alphabet -> symbolArray)))
+        }
+      }
       for (acc <- bufferSet.acceptations if acc.word == word) {
-        bufferSet.addAcceptation(NewAcceptation(word, acc.concept, correlationArray))
+        val conceptsInJaCorrelations = bufferSet.jaWordCorrelations.get(word).map(_.foldLeft(Set[Int]())((set, r) => set ++ r._1)).getOrElse(Set[Int]())
+        if (!conceptsInJaCorrelations(acc.concept)) {
+          bufferSet.addAcceptation(NewAcceptation(word, acc.concept, correlationArray))
+        }
       }
     }
 

@@ -967,7 +967,7 @@ class MainTest extends FlatSpec with Matchers {
     checkSameJapaneseWordWithMoreThan2Concepts(a => a.foldLeft(List[OldWord]())((list, e) => e :: list))
   }
 
-  it should "not include the kanji if it matches the kana" in {
+  it should "not include the kanji if it matches the kana (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanaArray = "だから"
@@ -1002,7 +1002,7 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.kanjiKanaCorrelations.indexOf((kanaIndex, kanaIndex)) should be < 0
   }
 
-  it should "include a word with kanji representation even if the word is included without kanji for other concept" in {
+  it should "include a word with kanji representation even if the word is included without kanji for other concept (old)" in {
     implicit val bufferSet = Main.initialiseDatabase()
 
     val kanaArray = "ただ"
@@ -1084,6 +1084,55 @@ class MainTest extends FlatSpec with Matchers {
     corrSet.size shouldBe 1
     corrSet.head._1 shouldBe Set(concept2)
     corrSet.head._2 shouldBe Vector(correlation)
+  }
+
+  it should "include a word with kanji representation even if the word is included without kanji for other concept" in {
+    implicit val bufferSet = Main.initialiseDatabase()
+
+    val kanaArray = "ただ"
+    val kanjiArray2 = "只"
+    val esArray1 = "gratis"
+    val esArrays2 = Array("ordinario", "común")
+    val esArray2 = esArrays2.mkString(", ")
+
+    val oldWordPronunciations = Map(
+      1 -> IndexedSeq(OldPronunciation(kanaArray, kanaArray)),
+      2 -> IndexedSeq(OldPronunciation(kanjiArray2, kanaArray))
+    )
+
+    val oldWords = Iterable(
+      OldWord(1, kanaArray, kanaArray, esArray1),
+      OldWord(2, kanjiArray2, kanaArray, esArray2)
+    )
+    Main.convertWords(oldWords, oldWordPronunciations)
+
+    val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanaArray -> kanaArray)
+    val jaAccIndex2 = findUniqueJapaneseAcceptationIndex(kanjiArray2 -> kanaArray)
+    val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
+    val esAccIndex2a = findUniqueSpanishAcceptationIndex(esArrays2(0))
+    val esAccIndex2b = findUniqueSpanishAcceptationIndex(esArrays2(1))
+
+    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
+    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
+
+    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
+    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    concept1 should not be concept2
+
+    val esAcc1 = bufferSet.newAcceptations(esAccIndex1)
+    esAcc1.word should not be jaWord
+    esAcc1.concept shouldBe concept1
+
+    val esAcc2a = bufferSet.newAcceptations(esAccIndex2a)
+    esAcc2a.word should not be jaWord
+    esAcc2a.word should not be esAcc1.word
+    esAcc2a.concept shouldBe concept2
+
+    val esAcc2b = bufferSet.newAcceptations(esAccIndex2b)
+    esAcc2b.word should not be jaWord
+    esAcc2b.word should not be esAcc1.word
+    esAcc2b.word should not be esAcc2a.word
+    esAcc2b.concept shouldBe concept2
   }
 
   it should "ignore any duplicated word within the database" in {
