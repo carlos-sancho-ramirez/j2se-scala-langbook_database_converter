@@ -1168,7 +1168,6 @@ class MainTest extends FlatSpec with Matchers {
   }
 
   it should "ignore any duplicated word within the database (with 2 words with same kana)" in {
-
     val kanjiArray1a = "漢"
     val kanjiArray1b = "字"
     val kanjiArray2a = "感"

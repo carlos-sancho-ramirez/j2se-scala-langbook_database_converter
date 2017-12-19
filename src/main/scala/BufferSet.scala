@@ -1,3 +1,4 @@
+import BufferSet.Correlation
 import Main.languages
 
 import scala.collection.mutable.ArrayBuffer
@@ -91,9 +92,9 @@ class BufferSet {
   //val jaWordCorrelations = scala.collection.mutable.Map[Int /* acc id */, Vector[Int /* Indexes within kanjiKanaCorrelations */]]()
   val jaWordCorrelations = scala.collection.mutable.Map[Int /* word id */, Set[(Set[Int] /* concepts */, Vector[Int /* Indexes within kanjiKanaCorrelations */])]]()
 
-  private val _correlations = ArrayBuffer[Map[Int /* alphabet */, Int /* symbolArray */]]()
+  private val _correlations = ArrayBuffer[Correlation]()
   private val _correlationHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
-  def correlations: scala.collection.IndexedSeq[Map[Int, Int]] = _correlations
+  def correlations: scala.collection.IndexedSeq[Correlation] = _correlations
 
   private val _correlationArrays = ArrayBuffer[Seq[Int /* correlation index */]]()
   private val _correlationArrayHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
@@ -173,7 +174,7 @@ class BufferSet {
     * If so, the index is returned. If not it is appended into
     * the list and the index is returned.
     */
-  def addCorrelationForIndex(correlation: Map[Int, Int]): Int = {
+  def addCorrelation(correlation: Correlation): Int = {
     if (correlation == null) {
       throw new IllegalArgumentException()
     }
@@ -191,15 +192,15 @@ class BufferSet {
       throw new IllegalArgumentException()
     }
 
-    addCorrelationForIndex(correlation.mapValues(addSymbolArray))
+    addCorrelation(correlation.mapValues(addSymbolArray))
   }
 
-  private def addCorrelationArrayForIntArray(array: scala.collection.Seq[Int]) = {
+  def addCorrelationArrayForIntArray(array: scala.collection.Seq[Int]) = {
     insertIfNotPresent(_correlationArrays, _correlationArrayHashes, array)
   }
 
   def addCorrelationArrayForIndex(array: scala.collection.Seq[Map[Int, Int]]) = {
-    val arr = array.map(addCorrelationForIndex)
+    val arr = array.map(addCorrelation)
     addCorrelationArrayForIntArray(arr)
   }
 

@@ -3,7 +3,7 @@ import java.security.{DigestOutputStream, MessageDigest}
 
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{HuffmanTableLengthEncoder, OutputBitStream}
+import sword.bitstream._
 import sword.bitstream.huffman._
 
 object StreamedDatabaseWriter {
@@ -20,7 +20,8 @@ object StreamedDatabaseWriter {
       for (value <- set) {
         javaSet.add(value)
       }
-      obs.writeRangedNumberSet(new HuffmanTableLengthEncoder(obs, lengthTable), min, max, javaSet)
+      val encoder = new RangedIntegerSetEncoder(obs, lengthTable, min, max)
+      obs.writeSet(encoder, encoder, encoder, encoder, javaSet)
     }
   }
 
@@ -131,7 +132,7 @@ object StreamedDatabaseWriter {
     }
   }
 
-  private def writeAcceptations(
+  private def writeAcceptationsOld(
       bufferSet: BufferSet,
       wordTable: => RangedIntegerHuffmanTable,
       conceptTable: => RangedIntegerHuffmanTable,
@@ -245,6 +246,82 @@ object StreamedDatabaseWriter {
     }
   }
 
+  private def writeAcceptations(
+      bufferSet: BufferSet,
+      wordTable: => RangedIntegerHuffmanTable,
+      conceptTable: => RangedIntegerHuffmanTable,
+      symbolArrayTable: RangedIntegerHuffmanTable,
+      minAlphabet: Int,
+      maxAlphabet: Int,
+      obs: OutputBitStream): Unit = {
+
+    // Export correlations
+    val correlationsLength = bufferSet.correlations.length
+    obs.writeNaturalNumber(correlationsLength)
+
+    if (correlationsLength > 0) {
+      val correlationTable = new RangedIntegerHuffmanTable(0, correlationsLength - 1)
+      val mapLengthFrequency = new java.util.HashMap[Integer, Integer]()
+      for (correlation <- bufferSet.correlations) {
+        val length = correlation.size
+        var amount: Integer = mapLengthFrequency.get(length)
+        if (amount == null) {
+          amount = 0
+        }
+
+        mapLengthFrequency.put(length, amount + 1)
+      }
+
+      val correlationLengthTable = DefinedHuffmanTable.withFrequencies[Integer](mapLengthFrequency, (a, b) => Integer.compare(a, b))
+      obs.writeHuffmanTable[Integer](correlationLengthTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+
+      for (correlation <- bufferSet.correlations) {
+        val keyEncoder = new RangedIntegerSetEncoder(obs, correlationLengthTable, minAlphabet, maxAlphabet)
+        val javaMap = new java.util.HashMap[Integer, Integer]()
+        for (pair <- correlation) {
+          javaMap.put(pair._1, pair._2)
+        }
+        obs.writeMap[Integer, Integer](keyEncoder, keyEncoder, keyEncoder, keyEncoder, item => obs.writeHuffmanSymbol(symbolArrayTable, item), javaMap)
+      }
+
+      // Export correlation arrays
+      val correlationArraysLength = bufferSet.correlationArrays.length
+      val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
+      obs.writeNaturalNumber(correlationArraysLength)
+
+      mapLengthFrequency.clear()
+      for (correlationArray <- bufferSet.correlationArrays) {
+        val length = correlationArray.size
+        var amount: Integer = mapLengthFrequency.get(length)
+        if (amount == null) {
+          amount = 0
+        }
+
+        mapLengthFrequency.put(length, amount + 1)
+      }
+
+      val corrArrayLengthTable = DefinedHuffmanTable.withFrequencies[Integer](mapLengthFrequency, (a, b) => Integer.compare(a, b))
+      obs.writeHuffmanTable[Integer](corrArrayLengthTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+
+      for (correlationArray <- bufferSet.correlationArrays) {
+        obs.writeHuffmanSymbol[Integer](corrArrayLengthTable, correlationArray.size)
+        for (item <- correlationArray) {
+          obs.writeHuffmanSymbol[Integer](correlationTable, item)
+        }
+      }
+
+      // Export acceptations
+      val acceptationsLength = bufferSet.newAcceptations.length
+      obs.writeNaturalNumber(acceptationsLength)
+
+      for (acc <- bufferSet.newAcceptations) {
+        obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
+        obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
+        obs.writeHuffmanSymbol[Integer](correlationArrayTable, acc.correlation)
+      }
+    }
+  }
+
   def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
     val symbolArraysLength = bufferSet.symbolArrays.length
     writeSymbolArrays(bufferSet.symbolArrays, obs)
@@ -264,10 +341,12 @@ object StreamedDatabaseWriter {
     obs.writeNaturalNumber(maxWord + 1)
     obs.writeNaturalNumber(maxConcept + 1)
 
-    // Export acceptations
-    val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
+    // Export acceptations (old)
     val acceptationsLength = bufferSet.acceptations.length
-    writeAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, alphabetTable, obs)
+    writeAcceptationsOld(bufferSet, wordTable, conceptTable, symbolArrayTable, new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet), obs)
+
+    // Export acceptations
+    writeAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, minValidAlphabet, maxValidAlphabet, obs)
 
     // Export bunchConcepts
     val bunchConceptsLength = bufferSet.bunchConcepts.size

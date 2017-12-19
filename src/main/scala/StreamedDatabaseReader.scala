@@ -1,9 +1,9 @@
 import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{HuffmanTableLengthDecoder, InputBitStream}
+import sword.bitstream.{InputBitStream, RangedIntegerSetDecoder}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ListBuffer
 
 object StreamedDatabaseReader {
 
@@ -15,7 +15,8 @@ object StreamedDatabaseReader {
     }
 
     def readRangedNumberSet(lengthTable: HuffmanTable[Integer], min: Int, max:Int): Set[Int] = {
-      val iterator = ibs.readRangedNumberSet(new HuffmanTableLengthDecoder(ibs, lengthTable), min, max).iterator
+      val decoder = new RangedIntegerSetDecoder(ibs, lengthTable, min, max)
+      val iterator = ibs.readSet[Integer](decoder, decoder, decoder).iterator
       val set = scala.collection.mutable.Set[Int]()
       while (iterator.hasNext) {
         set += iterator.next()
@@ -125,7 +126,7 @@ object StreamedDatabaseReader {
     result.toSet
   }
 
-  private def readAcceptations(
+  private def readAcceptationsOld(
       bufferSet: BufferSet,
       acceptationsLength: Int,
       wordTable: => RangedIntegerHuffmanTable,
@@ -187,6 +188,52 @@ object StreamedDatabaseReader {
     }
   }
 
+  private def readAcceptations(
+      bufferSet: BufferSet,
+      wordTable: => RangedIntegerHuffmanTable,
+      conceptTable: => RangedIntegerHuffmanTable,
+      symbolArrayTable: RangedIntegerHuffmanTable,
+      minAlphabet: Int,
+      maxAlphabet: Int,
+      ibs: InputBitStream): Unit = {
+
+    // Import correlations
+    val correlationsLength = ibs.readNaturalNumber()
+    if (correlationsLength > 0) {
+      val correlationTable = new RangedIntegerHuffmanTable(0, correlationsLength - 1)
+      val correlationLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      for (i <- 0 until correlationsLength) {
+        val keyDecoder = new RangedIntegerSetDecoder(ibs, correlationLengthTable, minAlphabet, maxAlphabet)
+        val iterator = ibs.readMap[Integer, Integer](keyDecoder, keyDecoder, keyDecoder, () => ibs.readHuffmanSymbol(symbolArrayTable)).entrySet.iterator
+        val map = scala.collection.mutable.Map[Int, Int]()
+        while (iterator.hasNext) {
+          val pair = iterator.next()
+          map(pair.getKey) = pair.getValue
+        }
+        bufferSet.addCorrelation(map.toMap)
+      }
+
+      // Import correlation arrays
+      val correlationArraysLength = ibs.readNaturalNumber()
+      val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
+
+      val corrArrayLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      for (i <- 0 until correlationArraysLength) {
+        val length = ibs.readHuffmanSymbol(corrArrayLengthTable)
+        bufferSet.addCorrelationArrayForIntArray(Array.ofDim[Int](length).map(_ => ibs.readHuffmanSymbol(correlationTable).toInt))
+      }
+
+      // Import acceptations
+      val acceptationsLength = ibs.readNaturalNumber()
+      for (i <- 0 until acceptationsLength) {
+        bufferSet.addAcceptation(NewAcceptation(
+          ibs.readHuffmanSymbol(wordTable),
+          ibs.readHuffmanSymbol(conceptTable),
+          ibs.readHuffmanSymbol(correlationArrayTable)))
+      }
+    }
+  }
+
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
     readSymbolArrays(bufferSet, ibs)
     val symbolArraysLength = bufferSet.symbolArrays.length
@@ -206,10 +253,13 @@ object StreamedDatabaseReader {
     lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
     lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
 
-    // Export acceptations
+    // Export acceptations (old)
     val acceptationsLength = ibs.readNaturalNumber()
     val alphabetTable = new RangedIntegerHuffmanTable(minValidAlphabet, maxValidAlphabet)
-    readAcceptations(bufferSet, acceptationsLength, wordTable, conceptTable, symbolArrayTable, alphabetTable, ibs)
+    readAcceptationsOld(bufferSet, acceptationsLength, wordTable, conceptTable, symbolArrayTable, alphabetTable, ibs)
+
+    // Import acceptations
+    readAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, minValidAlphabet, maxValidAlphabet, ibs)
 
     // Export bunchConcepts
     val bunchConceptsLength = ibs.readNaturalNumber()
