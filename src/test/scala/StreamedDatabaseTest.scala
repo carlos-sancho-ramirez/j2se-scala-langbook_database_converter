@@ -288,15 +288,15 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     conceptCount += 1
     val targetBunch = conceptCount
 
-    val matcher = Map(
+    val matcher = bufferSet.addCorrelation(Map(
       Main.kanjiAlphabet -> iSymbolArray
-    )
+    ))
 
     bufferSet.agents += Agent(
       targetBunch,
       sourceBunches = Set(),
       matcher,
-      adder = Map(),
+      adder = bufferSet.addCorrelation(Map()),
       rule = StreamedDatabaseConstants.nullBunchId,
       fromStart = false
     )
@@ -318,11 +318,12 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     conceptCount += 1
     val allAdjBunch = conceptCount
 
+    val nullCorrelation = bufferSet.addCorrelation(Map())
     bufferSet.agents += Agent(
       targetBunch = allAdjBunch,
       sourceBunches = Set(iAdjBunch, naAdjBunch),
-      matcher = Map(),
-      adder = Map(),
+      matcher = nullCorrelation,
+      adder = nullCorrelation,
       rule = StreamedDatabaseConstants.nullBunchId,
       fromStart = false
     )
@@ -347,8 +348,8 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     bufferSet.agents += Agent(
       targetBunch = StreamedDatabaseConstants.nullBunchId,
       sourceBunches = Set(iAdjBunch),
-      matcher = Map(Main.kanjiAlphabet -> iSymbolArrayIndex),
-      adder = Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex),
+      matcher = bufferSet.addCorrelation(Map(Main.kanjiAlphabet -> iSymbolArrayIndex)),
+      adder = bufferSet.addCorrelation(Map(Main.kanjiAlphabet -> kattaSymbolArrayIndex)),
       rule = ruleConcept,
       fromStart = false
     )
@@ -372,8 +373,8 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     bufferSet.agents += Agent(
       targetBunch = StreamedDatabaseConstants.nullBunchId,
       sourceBunches = Set(waseiKangoBunch),
-      matcher = Map(),
-      adder = Map(Main.kanjiAlphabet -> goSymbolArrayIndex),
+      matcher = bufferSet.addCorrelation(Map()),
+      adder = bufferSet.addCorrelation(Map(Main.kanjiAlphabet -> goSymbolArrayIndex)),
       rule = ruleConcept,
       fromStart = true
     )

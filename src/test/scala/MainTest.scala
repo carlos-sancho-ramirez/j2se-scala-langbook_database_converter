@@ -1271,7 +1271,8 @@ class MainTest extends FlatSpec with Matchers {
     val intransitiveConcept = bufferSet.acceptations(intransitiveAccIndex).concept
 
     val sourceBunches = Set(transitiveConcept, intransitiveConcept)
-    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, Map(), Map(), StreamedDatabaseConstants.nullBunchId, fromStart = false))
+    val nullCorrelation = bufferSet.addCorrelation(Map())
+    bufferSet.agents.toSet shouldBe Set(Agent(verbConcept, sourceBunches, nullCorrelation, nullCorrelation, StreamedDatabaseConstants.nullBunchId, fromStart = false))
   }
 
   it should "include agents for lists with suffix grammar rules" in {
@@ -1337,14 +1338,14 @@ class MainTest extends FlatSpec with Matchers {
     val expectedAgent = Agent(
       StreamedDatabaseConstants.nullBunchId,
       Set(iAdjConcept),
-      Map(
+      bufferSet.addCorrelation(Map(
         Main.kanjiAlphabet -> iSymbolArrayIndex,
         Main.kanaAlphabet -> iSymbolArrayIndex
-      ),
-      Map(
+      )),
+      bufferSet.addCorrelation(Map(
         Main.kanjiAlphabet -> kattaSymbolArrayIndex,
         Main.kanaAlphabet -> kattaSymbolArrayIndex
-      ),
+      )),
       ruleConcept,
       fromStart = false
     )
@@ -1393,11 +1394,11 @@ class MainTest extends FlatSpec with Matchers {
     val expectedAgent = Agent(
       StreamedDatabaseConstants.nullBunchId,
       Set(substantiveConcept),
-      Map(),
-      Map(
+      bufferSet.addCorrelation(Map()),
+      bufferSet.addCorrelation(Map(
         Main.kanjiAlphabet -> prefixSymbolArrayIndex,
         Main.kanaAlphabet -> prefixSymbolArrayIndex
-      ),
+      )),
       ruleConcept,
       fromStart = true
     )

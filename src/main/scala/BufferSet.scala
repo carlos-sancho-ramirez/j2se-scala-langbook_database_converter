@@ -41,7 +41,7 @@ case class NewAcceptation(word: Int, concept: Int, correlation: Int)
   *                  the beginning of the word (prefix).
   *                  If false, they are applied from the rear part (suffix).
   */
-case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: BufferSet.Correlation, adder: BufferSet.Correlation, rule: Int /* concept */, fromStart: Boolean) {
+case class Agent(targetBunch: Int, sourceBunches: Set[Int], matcher: Int /* Correlation */, adder: Int /* Correlation */, rule: Int /* concept */, fromStart: Boolean) {
   if (targetBunch == StreamedDatabaseConstants.nullBunchId) {
     if (matcher == adder) {
       throw new IllegalArgumentException("When target is null, modification is expected. But matcher and adder are equivalent")

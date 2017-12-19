@@ -636,6 +636,7 @@ object Main {
       bufferSet.bunchAcceptations(listConcept) = bufferSet.bunchAcceptations.getOrElse(listConcept, Set[Int]()) + accIndex
     }
 
+    val nullCorrelation = bufferSet.addCorrelation(Map())
     for {
       (listId,_) <- oldLists
       (targetBunch, oldTargetListId, _, _) <- lists if oldTargetListId == listId
@@ -648,7 +649,7 @@ object Main {
       }).toSet
 
       if (sources.nonEmpty) {
-        bufferSet.agents += Agent(targetBunch, sources, Map(), Map(), StreamedDatabaseConstants.nullBunchId, fromStart = false)
+        bufferSet.agents += Agent(targetBunch, sources, nullCorrelation, nullCorrelation, StreamedDatabaseConstants.nullBunchId, fromStart = false)
       }
     }
 
@@ -661,15 +662,15 @@ object Main {
       }
 
       val bunchId = lists.collectFirst { case list if list._2 == listId => list._1 }.get
-      val agentMatcher: BufferSet.Correlation = {
+      val agentMatcher: Int = {
         if (matchers.size == 1) {
           val constraintSymbolArrayIndex = bufferSet.addSymbolArray(grammarConstraints(matchers.head))
-          Map(
+          bufferSet.addCorrelation(Map(
             kanjiAlphabet -> constraintSymbolArrayIndex,
             kanaAlphabet -> constraintSymbolArrayIndex
-          )
+          ))
         }
-        else Map()
+        else nullCorrelation
       }
 
       if (matchers.size < 2) {
@@ -691,10 +692,10 @@ object Main {
         }
 
         val ruleSymbolArrayIndex = bufferSet.addSymbolArray(rule.pattern)
-        val agentAdder = Map(
+        val agentAdder = bufferSet.addCorrelation(Map(
           kanjiAlphabet -> ruleSymbolArrayIndex,
           kanaAlphabet -> ruleSymbolArrayIndex
-        )
+        ))
 
         bufferSet.agents += Agent(StreamedDatabaseConstants.nullBunchId, Set(bunchId), agentMatcher, agentAdder, ruleConcept, rule.fromStart)
       }

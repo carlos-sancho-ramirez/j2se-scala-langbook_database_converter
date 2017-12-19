@@ -286,38 +286,41 @@ object StreamedDatabaseWriter {
 
       // Export correlation arrays
       val correlationArraysLength = bufferSet.correlationArrays.length
-      val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
       obs.writeNaturalNumber(correlationArraysLength)
 
-      mapLengthFrequency.clear()
-      for (correlationArray <- bufferSet.correlationArrays) {
-        val length = correlationArray.size
-        var amount: Integer = mapLengthFrequency.get(length)
-        if (amount == null) {
-          amount = 0
+      if (correlationArraysLength > 0) {
+        val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
+
+        mapLengthFrequency.clear()
+        for (correlationArray <- bufferSet.correlationArrays) {
+          val length = correlationArray.size
+          var amount: Integer = mapLengthFrequency.get(length)
+          if (amount == null) {
+            amount = 0
+          }
+
+          mapLengthFrequency.put(length, amount + 1)
         }
 
-        mapLengthFrequency.put(length, amount + 1)
-      }
+        val corrArrayLengthTable = DefinedHuffmanTable.withFrequencies[Integer](mapLengthFrequency, (a, b) => Integer.compare(a, b))
+        obs.writeHuffmanTable[Integer](corrArrayLengthTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
 
-      val corrArrayLengthTable = DefinedHuffmanTable.withFrequencies[Integer](mapLengthFrequency, (a, b) => Integer.compare(a, b))
-      obs.writeHuffmanTable[Integer](corrArrayLengthTable, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
-
-      for (correlationArray <- bufferSet.correlationArrays) {
-        obs.writeHuffmanSymbol[Integer](corrArrayLengthTable, correlationArray.size)
-        for (item <- correlationArray) {
-          obs.writeHuffmanSymbol[Integer](correlationTable, item)
+        for (correlationArray <- bufferSet.correlationArrays) {
+          obs.writeHuffmanSymbol[Integer](corrArrayLengthTable, correlationArray.size)
+          for (item <- correlationArray) {
+            obs.writeHuffmanSymbol[Integer](correlationTable, item)
+          }
         }
-      }
 
-      // Export acceptations
-      val acceptationsLength = bufferSet.newAcceptations.length
-      obs.writeNaturalNumber(acceptationsLength)
+        // Export acceptations
+        val acceptationsLength = bufferSet.newAcceptations.length
+        obs.writeNaturalNumber(acceptationsLength)
 
-      for (acc <- bufferSet.newAcceptations) {
-        obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
-        obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
-        obs.writeHuffmanSymbol[Integer](correlationArrayTable, acc.correlation)
+        for (acc <- bufferSet.newAcceptations) {
+          obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
+          obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
+          obs.writeHuffmanSymbol[Integer](correlationArrayTable, acc.correlation)
+        }
       }
     }
   }
@@ -414,25 +417,17 @@ object StreamedDatabaseWriter {
       val nat3Table = new NaturalNumberHuffmanTable(3)
 
       val sourceSetLengthFreqMap = new java.util.HashMap[Integer, Integer]()
-      val matcherSetLengthFreqMap = new java.util.HashMap[Integer, Integer]()
       for (agent <- sortedAgents) {
         val sourceLength = agent.sourceBunches.size
         val sourceValue = sourceSetLengthFreqMap.getOrDefault(sourceLength, 0)
         sourceSetLengthFreqMap.put(sourceLength, sourceValue + 1)
-
-        val matcherLength = agent.matcher.size
-        val matcherValue = matcherSetLengthFreqMap.getOrDefault(matcherLength, 0)
-        matcherSetLengthFreqMap.put(matcherLength, matcherValue + 1)
-
-        val adderLength = agent.adder.size
-        val adderValue = matcherSetLengthFreqMap.getOrDefault(adderLength, 0)
-        matcherSetLengthFreqMap.put(adderLength, adderValue + 1)
       }
-      val sourceSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](sourceSetLengthFreqMap, (x,y) => Integer.compare(x,y))
-      val matcherSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](matcherSetLengthFreqMap, (x,y) => Integer.compare(x,y))
 
+      val sourceSetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](sourceSetLengthFreqMap, (x,y) => Integer.compare(x,y))
       obs.writeHuffmanTable[Integer](sourceSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
-      obs.writeHuffmanTable[Integer](matcherSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
+
+      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.length - 1)
+      val nullCorrelation = bufferSet.addCorrelation(Map())
 
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
@@ -452,31 +447,14 @@ object StreamedDatabaseWriter {
           else sourceBunches.min
         }
 
-        def writeCorrelationMap(map: Correlation): Unit = {
-          val maxAlphabet = bufferSet.alphabets.max
-          val mapLength = map.size
-          obs.writeHuffmanSymbol[Integer](matcherSetLengthTable, Integer.valueOf(mapLength))
-          if (mapLength > 0) {
-            val list = map.toList.sortWith(_._1 < _._1)
-            var minAlphabet = bufferSet.alphabets.min
-            for ((alphabet, symbolArrayIndex) <- list) {
-              val table = new RangedIntegerHuffmanTable(minAlphabet, maxAlphabet)
-              obs.writeHuffmanSymbol[Integer](table, alphabet)
-              minAlphabet = alphabet + 1
+        obs.writeHuffmanSymbol[Integer](correlationTable, agent.matcher)
+        obs.writeHuffmanSymbol[Integer](correlationTable, agent.adder)
 
-              obs.writeHuffmanSymbol[Integer](symbolArrayTable, symbolArrayIndex)
-            }
-          }
-        }
-
-        writeCorrelationMap(agent.matcher)
-        writeCorrelationMap(agent.adder)
-
-        if (agent.adder.nonEmpty) {
+        if (agent.adder != nullCorrelation) {
           obs.writeHuffmanSymbol[Integer](conceptTable, agent.rule)
         }
 
-        if (agent.matcher.nonEmpty || agent.adder.nonEmpty) {
+        if (agent.matcher != nullCorrelation || agent.adder != nullCorrelation) {
           obs.writeBoolean(agent.fromStart)
         }
 

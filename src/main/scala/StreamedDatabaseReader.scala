@@ -215,21 +215,23 @@ object StreamedDatabaseReader {
 
       // Import correlation arrays
       val correlationArraysLength = ibs.readNaturalNumber()
-      val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
+      if (correlationArraysLength > 0) {
+        val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
 
-      val corrArrayLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
-      for (i <- 0 until correlationArraysLength) {
-        val length = ibs.readHuffmanSymbol(corrArrayLengthTable)
-        bufferSet.addCorrelationArrayForIntArray(Array.ofDim[Int](length).map(_ => ibs.readHuffmanSymbol(correlationTable).toInt))
-      }
+        val corrArrayLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+        for (i <- 0 until correlationArraysLength) {
+          val length = ibs.readHuffmanSymbol(corrArrayLengthTable)
+          bufferSet.addCorrelationArrayForIntArray(Array.ofDim[Int](length).map(_ => ibs.readHuffmanSymbol(correlationTable).toInt))
+        }
 
-      // Import acceptations
-      val acceptationsLength = ibs.readNaturalNumber()
-      for (i <- 0 until acceptationsLength) {
-        bufferSet.addAcceptation(NewAcceptation(
-          ibs.readHuffmanSymbol(wordTable),
-          ibs.readHuffmanSymbol(conceptTable),
-          ibs.readHuffmanSymbol(correlationArrayTable)))
+        // Import acceptations
+        val acceptationsLength = ibs.readNaturalNumber()
+        for (i <- 0 until acceptationsLength) {
+          bufferSet.addAcceptation(NewAcceptation(
+            ibs.readHuffmanSymbol(wordTable),
+            ibs.readHuffmanSymbol(conceptTable),
+            ibs.readHuffmanSymbol(correlationArrayTable)))
+        }
       }
     }
   }
@@ -300,7 +302,9 @@ object StreamedDatabaseReader {
     if (agentsLength > 0) {
       val nat3Table = new NaturalNumberHuffmanTable(3)
       val sourceSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
-      val matcherSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
+
+      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.size - 1)
+      val nullCorrelation = bufferSet.addCorrelation(Map())
 
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
@@ -317,33 +321,17 @@ object StreamedDatabaseReader {
           minSource = sourceSet.min
         }
 
-        def readCorrelationMap(): Correlation = {
-          val maxAlphabet = bufferSet.alphabets.max
-          val mapLength = ibs.readHuffmanSymbol(matcherSetLengthTable)
-          val result = scala.collection.mutable.Map[Int, Int]()
-          var minAlphabet = bufferSet.alphabets.min
-          for (i <- 0 until mapLength) {
-            val table = new RangedIntegerHuffmanTable(minAlphabet, maxAlphabet)
-            val alphabet = ibs.readHuffmanSymbol(table)
-            minAlphabet = alphabet + 1
-            val symbolArrayIndex = ibs.readHuffmanSymbol(symbolArrayTable)
-            result(alphabet) = symbolArrayIndex
-          }
-
-          result.toMap
-        }
-
-        val matcher = readCorrelationMap()
-        val adder = readCorrelationMap()
+        val matcher = ibs.readHuffmanSymbol(correlationTable)
+        val adder = ibs.readHuffmanSymbol(correlationTable)
 
         val rule = {
-          if (adder.nonEmpty) {
+          if (adder != nullCorrelation) {
             ibs.readHuffmanSymbol(conceptTable).toInt
           }
           else StreamedDatabaseConstants.nullBunchId
         }
 
-        val fromStart = (matcher.nonEmpty || adder.nonEmpty) && ibs.readBoolean()
+        val fromStart = (matcher != nullCorrelation || adder != nullCorrelation) && ibs.readBoolean()
 
         bufferSet.agents += Agent(targetBunch, sourceSet, matcher, adder, rule, fromStart)
 
