@@ -694,6 +694,8 @@ object Main {
           val newConcept = conceptCount
           conceptCount += 1
           bufferSet.acceptations += Acceptation(ruleWordId, newConcept)
+          val corrArray = bufferSet.addCorrelationArrayForIndex(Vector(Map(esAlphabet -> ruleNameSymbolArrayIndex)))
+          bufferSet.addAcceptation(NewAcceptation(ruleWordId, newConcept, corrArray))
           newConcept
         }
 

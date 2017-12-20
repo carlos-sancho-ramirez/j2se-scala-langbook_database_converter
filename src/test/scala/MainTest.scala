@@ -1269,6 +1269,35 @@ class MainTest extends FlatSpec with Matchers {
     findUniqueSpanishAcceptationIndex(listName)
   }
 
+  it should "include all GrammarRule names as Spanish words" in {
+    implicit val bufferSet = new BufferSet()
+
+    val listId = 1
+    val constraintId = 14
+    val ruleId = 15
+    val listName = "adjetivo"
+    val ruleName = "pasado"
+    val oldLists = Map[Int, String](listId -> listName)
+
+    val listChildRegisters = Vector(
+      ListChildRegister(listId, constraintId, Main.listChildTypes.constraint),
+      ListChildRegister(listId, ruleId, Main.listChildTypes.rule)
+    )
+
+    val grammarConstraints = Map(
+      constraintId -> "い"
+    )
+
+    val grammarRules = Map(
+      ruleId -> GrammarRuleRegister(ruleName, 0, "かった")
+    )
+
+    val oldWordAccMap = Map[Int, Set[Int]]()
+
+    Main.convertBunches(oldLists, listChildRegisters, grammarConstraints, grammarRules, oldWordAccMap)
+    findUniqueSpanishAcceptationIndex(ruleName)
+  }
+
   it should "include agents including all list children" in {
     val substantiveListId = 54
     val verbListId = 55
