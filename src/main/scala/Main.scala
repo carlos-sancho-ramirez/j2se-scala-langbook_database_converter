@@ -561,12 +561,16 @@ object Main {
     wordCount += 1
     conceptCount += 1
 
-    def appendSpanishWord(symbolArray: String): Int = {
-      val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+    def appendSpanishAcceptation(symbolArray: String, concept: Int): Unit = {
+      val newWord = wordCount
+      bufferSet.wordRepresentations.append(WordRepresentation(newWord, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      bufferSet.acceptations += Acceptation(newWord, concept)
+
+      val correlationId = bufferSet.addCorrelationArray(Vector(Map(esAlphabet -> symbolArray)))
+      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
+
       wordCount += 1
-      esWords += newIndex
-      newIndex
+      esWords += newWord
     }
 
     for ((listId, name) <- oldLists) {
@@ -582,11 +586,13 @@ object Main {
         lists += ((concepts.head, listId, false, name))
       }
       else {
-        val word = wordOption.getOrElse(appendSpanishWord(name))
         val concept = conceptCount
         conceptCount += 1
 
-        bufferSet.acceptations += Acceptation(word, concept)
+        if (wordOption.isEmpty) {
+          appendSpanishAcceptation(name, concept)
+        }
+
         lists += ((concept, listId, wordOption.isEmpty, name))
       }
     }
