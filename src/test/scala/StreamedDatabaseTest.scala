@@ -236,8 +236,8 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val sourceSet = new BufferSet()
 
     val verbSymbolArray = sourceSet.addSymbolArray("verb")
-    val runSymbolArray = sourceSet.addSymbolArray("red")
-    val jumpSymbolArray = sourceSet.addSymbolArray("green")
+    val runSymbolArray = sourceSet.addSymbolArray("run")
+    val jumpSymbolArray = sourceSet.addSymbolArray("jump")
 
     val countrySymbolArray = sourceSet.addSymbolArray("country")
     val japanSymbolArray = sourceSet.addSymbolArray("japan")
@@ -272,6 +272,12 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       Acceptation(japanWord, japanConcept),
       Acceptation(countryWord, countryConcept)
     )
+
+    sourceSet.addAcceptation(NewAcceptation(verbWord, verbConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> verbSymbolArray)))))
+    sourceSet.addAcceptation(NewAcceptation(runWord, runConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> runSymbolArray)))))
+    sourceSet.addAcceptation(NewAcceptation(jumpWord, jumpConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> jumpSymbolArray)))))
+    sourceSet.addAcceptation(NewAcceptation(japanWord, japanConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> japanSymbolArray)))))
+    sourceSet.addAcceptation(NewAcceptation(countryWord, countryConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> countrySymbolArray)))))
 
     sourceSet.bunchAcceptations(verbConcept) = Set(accBase + 1, accBase +2)
     sourceSet.bunchAcceptations(countryConcept) = Set(accBase + 3)

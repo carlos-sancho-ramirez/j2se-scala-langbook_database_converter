@@ -104,8 +104,10 @@ class BufferSet {
   private val _newAcceptationHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
   def newAcceptations: scala.collection.IndexedSeq[NewAcceptation] = _newAcceptations
 
+  private val _oldNewAcceptationsMap = scala.collection.mutable.Map[Int /* Old Acceptation index */, Int /* New Acceptation index */]()
   val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
   val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
+  def bunchNewAcceptations: scala.collection.Map[Int /* Bunch */, Set[Int]] = bunchAcceptations.mapValues(_.map(_oldNewAcceptationsMap))
 
   val agents = scala.collection.mutable.Set[Agent]()
 
@@ -210,7 +212,17 @@ class BufferSet {
   }
 
   def addAcceptation(acc: NewAcceptation) = {
-    insertIfNotPresent(_newAcceptations, _newAcceptationHashes, acc)
+    val index = insertIfNotPresent(_newAcceptations, _newAcceptationHashes, acc)
+
+    val oldAcc = Acceptation(acc.word, acc.concept)
+    var accIndex = acceptations.indexOf(oldAcc)
+    if (accIndex < 0) {
+      accIndex = acceptations.size
+      acceptations += oldAcc
+    }
+
+    _oldNewAcceptationsMap(accIndex) = index
+    index
   }
 
   def charCountMap: Map[Char, Int] = {

@@ -1,4 +1,3 @@
-import BufferSet.Correlation
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
 import sword.bitstream.{InputBitStream, RangedIntegerSetDecoder}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
@@ -236,6 +235,27 @@ object StreamedDatabaseReader {
     }
   }
 
+  private def readBunchAcceptations(
+      bufferSet: BufferSet,
+      conceptTable: RangedIntegerHuffmanTable,
+      minAcceptation: Int,
+      maxAcceptation: Int,
+      ibs: InputBitStream): Unit = {
+    val bunchAcceptationsLength = ibs.readNaturalNumber()
+    if (bunchAcceptationsLength > 0) {
+      val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
+        if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt), prev => ibs.readNaturalNumber().toInt + prev + 1)
+        else null
+      }
+
+      for (i <- 0 until bunchAcceptationsLength) {
+        val bunch = ibs.readHuffmanSymbol(conceptTable)
+        val acceptations = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, minAcceptation, maxAcceptation)
+        // Nothing to be added as it is redundant once old bunchAcceptations are read
+      }
+    }
+  }
+
   def read(bufferSet: BufferSet, ibs: InputBitStream): Unit = {
     readSymbolArrays(bufferSet, ibs)
     val symbolArraysLength = bufferSet.symbolArrays.length
@@ -284,7 +304,7 @@ object StreamedDatabaseReader {
       }
     }
 
-    // Export bunchAcceptations
+    // Export bunchAcceptations (old)
     val bunchAcceptationsLength = ibs.readNaturalNumber()
     val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
       if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt), prev => ibs.readNaturalNumber().toInt + prev + 1)
@@ -296,6 +316,9 @@ object StreamedDatabaseReader {
       val acceptations = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1)
       bufferSet.bunchAcceptations(bunch) = acceptations
     }
+
+    // Export bunchAcceptations
+    readBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.newAcceptations.size - 1, ibs)
 
     // Export agents
     val agentsLength = ibs.readNaturalNumber()

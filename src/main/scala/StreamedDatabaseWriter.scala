@@ -325,6 +325,36 @@ object StreamedDatabaseWriter {
     }
   }
 
+  def writeBunchAcceptations(
+      bufferSet: BufferSet,
+      conceptTable: RangedIntegerHuffmanTable,
+      minAcceptation: Int,
+      maxAcceptation: Int,
+      obs: OutputBitStream): Unit = {
+    val bunchAcceptations = bufferSet.bunchNewAcceptations
+    val bunchAcceptationsLength = bunchAcceptations.size
+    obs.writeNaturalNumber(bunchAcceptationsLength)
+
+    val acceptationSetLengthTable = if (bunchAcceptationsLength > 0) {
+      val bunchAcceptationsLengthFrecMap = new java.util.HashMap[Integer, Integer]()
+      for ((_, accs) <- bunchAcceptations) {
+        val length = accs.size
+        val currentCount = bunchAcceptationsLengthFrecMap.getOrDefault(length, 0)
+        bunchAcceptationsLengthFrecMap.put(length, currentCount + 1)
+      }
+
+      val table = DefinedHuffmanTable.withFrequencies[Integer](bunchAcceptationsLengthFrecMap, (x, y) => Integer.compare(x, y))
+      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+      table
+    }
+    else null
+
+    for ((bunch, accs) <- bunchAcceptations) {
+      obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
+      obs.writeRangedNumberSet(acceptationSetLengthTable, minAcceptation, maxAcceptation, accs)
+    }
+  }
+
   def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
     val symbolArraysLength = bufferSet.symbolArrays.length
     writeSymbolArrays(bufferSet.symbolArrays, obs)
@@ -374,7 +404,7 @@ object StreamedDatabaseWriter {
       obs.writeRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
     }
 
-    // Export bunchAcceptations
+    // Export bunchAcceptations (old)
     val bunchAcceptationsLength = bufferSet.bunchAcceptations.size
     obs.writeNaturalNumber(bunchAcceptationsLength)
 
@@ -396,6 +426,9 @@ object StreamedDatabaseWriter {
       obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
       obs.writeRangedNumberSet(bunchAcceptationsLengthTable, 0, acceptationsLength - 1, accs)
     }
+
+    // Export bunchAcceptations
+    writeBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.newAcceptations.size - 1, obs)
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
       b.nonEmpty && (a.isEmpty || a.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail)))
