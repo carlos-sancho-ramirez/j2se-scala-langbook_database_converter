@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{InputBitStream, RangedIntegerSetDecoder}
+import sword.bitstream.{InputBitStream, IntegerDecoder, RangedIntegerSetDecoder}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
 import scala.collection.mutable.ListBuffer
@@ -160,9 +160,10 @@ object StreamedDatabaseReader {
     // Export jaWordCorrelations
     val jaWordCorrelationsLength = ibs.readNaturalNumber()
     if (jaWordCorrelationsLength > 0) {
-      val correlationReprCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
-      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
-      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable[Int](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      val intDecoder = new IntegerDecoder(ibs)
+      val correlationReprCountHuffmanTable = ibs.readHuffmanTable(intDecoder, intDecoder)
+      val correlationConceptCountHuffmanTable = ibs.readHuffmanTable(intDecoder, intDecoder)
+      val correlationVectorLengthHuffmanTable = ibs.readHuffmanTable(intDecoder, intDecoder)
 
       for (i <- 0 until jaWordCorrelationsLength) {
         val wordId = ibs.readHuffmanSymbol(wordTable)
@@ -200,7 +201,8 @@ object StreamedDatabaseReader {
     val correlationsLength = ibs.readNaturalNumber()
     if (correlationsLength > 0) {
       val correlationTable = new RangedIntegerHuffmanTable(0, correlationsLength - 1)
-      val correlationLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      val intDecoder = new IntegerDecoder(ibs)
+      val correlationLengthTable = ibs.readHuffmanTable[Integer](intDecoder, intDecoder)
       for (i <- 0 until correlationsLength) {
         val keyDecoder = new RangedIntegerSetDecoder(ibs, correlationLengthTable, minAlphabet, maxAlphabet)
         val iterator = ibs.readMap[Integer, Integer](keyDecoder, keyDecoder, keyDecoder, () => ibs.readHuffmanSymbol(symbolArrayTable)).entrySet.iterator
@@ -217,7 +219,7 @@ object StreamedDatabaseReader {
       if (correlationArraysLength > 0) {
         val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
 
-        val corrArrayLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+        val corrArrayLengthTable = ibs.readHuffmanTable(intDecoder, intDecoder)
         for (i <- 0 until correlationArraysLength) {
           val length = ibs.readHuffmanSymbol(corrArrayLengthTable)
           bufferSet.addCorrelationArrayForIntArray(Array.ofDim[Int](length).map(_ => ibs.readHuffmanSymbol(correlationTable).toInt))
@@ -244,7 +246,10 @@ object StreamedDatabaseReader {
     val bunchAcceptationsLength = ibs.readNaturalNumber()
     if (bunchAcceptationsLength > 0) {
       val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
-        if (bunchAcceptationsLength > 0) ibs.readHuffmanTable(() => Integer.valueOf(ibs.readNaturalNumber().toInt), prev => ibs.readNaturalNumber().toInt + prev + 1)
+        if (bunchAcceptationsLength > 0) {
+          val intDecoder = new IntegerDecoder(ibs)
+          ibs.readHuffmanTable(intDecoder, intDecoder)
+        }
         else null
       }
 
