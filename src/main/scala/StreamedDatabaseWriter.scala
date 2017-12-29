@@ -175,8 +175,6 @@ object StreamedDatabaseWriter {
       obs.writeNaturalNumber(correlationArraysLength)
 
       if (correlationArraysLength > 0) {
-        val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
-
         mapLengthFrequency.clear()
         for (correlationArray <- bufferSet.correlationArrays) {
           val length = correlationArray.size
@@ -199,13 +197,33 @@ object StreamedDatabaseWriter {
         }
 
         // Export acceptations
-        val acceptationsLength = bufferSet.newAcceptations.length
+        val acceptationsLength = bufferSet.acceptations.length
         obs.writeNaturalNumber(acceptationsLength)
 
-        for (acc <- bufferSet.newAcceptations) {
-          obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
-          obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
-          obs.writeHuffmanSymbol[Integer](correlationArrayTable, acc.correlation)
+        if (acceptationsLength > 0) {
+          mapLengthFrequency.clear()
+          for (accIndex <- bufferSet.acceptations.indices) {
+            val set = bufferSet.acceptationCorrelations.getOrElse(accIndex, Set[Int]())
+            val length = set.size
+            var amount: Integer = mapLengthFrequency.get(length)
+            if (amount == null) {
+              amount = 0
+            }
+
+            mapLengthFrequency.put(length, amount + 1)
+          }
+
+          val corrArraySetLengthTable = DefinedHuffmanTable.withFrequencies[Integer](mapLengthFrequency, intEncoder)
+          obs.writeHuffmanTable[Integer](corrArraySetLengthTable, intEncoder, intEncoder)
+
+          for (i <- bufferSet.acceptations.indices) {
+            val acc = bufferSet.acceptations(i)
+            obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
+            obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
+
+            val set = bufferSet.acceptationCorrelations.getOrElse(i, Set[Int]())
+            obs.writeRangedNumberSet(corrArraySetLengthTable, 0, correlationArraysLength - 1, set)
+          }
         }
       }
     }
@@ -217,7 +235,7 @@ object StreamedDatabaseWriter {
       minAcceptation: Int,
       maxAcceptation: Int,
       obs: OutputBitStream): Unit = {
-    val bunchAcceptations = bufferSet.bunchNewAcceptations
+    val bunchAcceptations = bufferSet.bunchAcceptations
     val bunchAcceptationsLength = bunchAcceptations.size
     obs.writeNaturalNumber(bunchAcceptationsLength)
 
@@ -288,7 +306,7 @@ object StreamedDatabaseWriter {
     }
 
     // Export bunchAcceptations
-    writeBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.newAcceptations.size - 1, obs)
+    writeBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.acceptations.size - 1, obs)
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
       b.nonEmpty && (a.isEmpty || a.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail)))

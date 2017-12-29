@@ -102,8 +102,16 @@ class MainTest extends FlatSpec with Matchers {
   }
 
   private def findUniqueSpanishAcceptationIndex(str: String)(implicit bufferSet: BufferSet): Int = {
-    val correlationArray = findUniqueSpanishCorrelationArrayIndexOf(str)
-    bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == correlationArray)
+    val corrArrayIndex = findUniqueSpanishCorrelationArrayIndexOf(str)
+    val results = bufferSet.acceptationCorrelations.collect {
+      case (accId, corrArraySet) if corrArraySet.contains(corrArrayIndex) => accId
+    }
+
+    if (results.size != 1) {
+      throw new AssertionError()
+    }
+
+    results.head
   }
 
   private def findUniqueJapaneseCorrelationArrayIndexOf(corr: (String, String)*)(implicit bufferSet: BufferSet): Int = {
@@ -117,7 +125,15 @@ class MainTest extends FlatSpec with Matchers {
 
   private def findUniqueJapaneseAcceptationIndex(corr: (String, String)*)(implicit bufferSet: BufferSet): Int = {
     val corrArrayIndex = findUniqueJapaneseCorrelationArrayIndexOf(corr: _*)
-    bufferSet.newAcceptations findUniqueIndexWhere(_.correlation == corrArrayIndex)
+    val results = bufferSet.acceptationCorrelations.collect {
+      case (accId, corrArraySet) if corrArraySet.contains(corrArrayIndex) => accId
+    }
+
+    if (results.size != 1) {
+      throw new AssertionError()
+    }
+
+    results.head
   }
 
   it should "include a word and its acceptation properly" in {
@@ -138,8 +154,8 @@ class MainTest extends FlatSpec with Matchers {
 
     val jaAccIndex = findUniqueJapaneseAcceptationIndex(kanjiArray -> kanaArray)
     val esAccIndex = findUniqueSpanishAcceptationIndex(esArray)
-    bufferSet.newAcceptations(jaAccIndex).concept shouldBe bufferSet.newAcceptations(esAccIndex).concept
-    bufferSet.newAcceptations(jaAccIndex).word should not be bufferSet.newAcceptations(esAccIndex).word
+    bufferSet.acceptations(jaAccIndex).concept shouldBe bufferSet.acceptations(esAccIndex).concept
+    bufferSet.acceptations(jaAccIndex).word should not be bufferSet.acceptations(esAccIndex).word
   }
 
   it should "include a word with multiple Spanish words (old)" in {
@@ -242,15 +258,15 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.symbolArrays indexOf kanaArray should be < 0
 
     val jaAcc = findUniqueJapaneseAcceptationIndex(kanji1 -> kana1, str2 -> str2, str3 -> str3)
-    val concept = bufferSet.newAcceptations(jaAcc).concept
+    val concept = bufferSet.acceptations(jaAcc).concept
 
     val esAcc1 = findUniqueSpanishAcceptationIndex(esArrays(0))
     val esAcc2 = findUniqueSpanishAcceptationIndex(esArrays(1))
     val esAcc3 = findUniqueSpanishAcceptationIndex(esArrays(2))
 
-    bufferSet.newAcceptations(esAcc1).concept shouldBe concept
-    bufferSet.newAcceptations(esAcc2).concept shouldBe concept
-    bufferSet.newAcceptations(esAcc3).concept shouldBe concept
+    bufferSet.acceptations(esAcc1).concept shouldBe concept
+    bufferSet.acceptations(esAcc2).concept shouldBe concept
+    bufferSet.acceptations(esAcc3).concept shouldBe concept
   }
 
   it should "include a word with multiple Spanish concepts (old)" in {
@@ -355,24 +371,27 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.symbolArrays indexOf kanaArray should be < 0
 
     val jaCorrelationArrayIndex = findUniqueJapaneseCorrelationArrayIndexOf(kanji1 -> kana1, kanji2 -> kana2)
-    val jaAccIndex1 = bufferSet.newAcceptations findIndexWhere(_.correlation == jaCorrelationArrayIndex)
-    val jaAccIndex2 = bufferSet.newAcceptations findIndexWhere(_.correlation == jaCorrelationArrayIndex, jaAccIndex1 + 1)
-    bufferSet.newAcceptations indexWhere(_.correlation == jaCorrelationArrayIndex, jaAccIndex2 + 1) should be < 0
+    val jaAccIndexes = bufferSet.acceptationCorrelations.collect {
+      case (accId, corrArraySet) if corrArraySet.contains(jaCorrelationArrayIndex) => accId
+    }.toSet
+    jaAccIndexes.size shouldBe 2
+    val jaAccIndex1 = jaAccIndexes.head
+    val jaAccIndex2 = (jaAccIndexes - jaAccIndex1).head
 
     val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
     val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
     val esAccIndex3 = findUniqueSpanishAcceptationIndex(esArray3)
 
-    val concept1 = bufferSet.newAcceptations(esAccIndex1).concept
-    val concept2 = bufferSet.newAcceptations(esAccIndex2).concept
-    bufferSet.newAcceptations(esAccIndex3).concept shouldBe concept2
+    val concept1 = bufferSet.acceptations(esAccIndex1).concept
+    val concept2 = bufferSet.acceptations(esAccIndex2).concept
+    bufferSet.acceptations(esAccIndex3).concept shouldBe concept2
 
-    if (bufferSet.newAcceptations(jaAccIndex1).concept == concept1) {
-      bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept2
+    if (bufferSet.acceptations(jaAccIndex1).concept == concept1) {
+      bufferSet.acceptations(jaAccIndex2).concept shouldBe concept2
     }
     else {
-      bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept1
-      bufferSet.newAcceptations(jaAccIndex1).concept shouldBe concept2
+      bufferSet.acceptations(jaAccIndex2).concept shouldBe concept1
+      bufferSet.acceptations(jaAccIndex1).concept shouldBe concept2
     }
   }
 
@@ -495,12 +514,12 @@ class MainTest extends FlatSpec with Matchers {
     bufferSet.symbolArrays indexOf kanaArray2 should be < 0
 
     val esAccIndex = findUniqueSpanishAcceptationIndex(esArray)
-    val concept = bufferSet.newAcceptations(esAccIndex).concept
+    val concept = bufferSet.acceptations(esAccIndex).concept
 
     val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanji11 -> kana11, kanji12 -> kana12)
     val jaAccIndex2 = findUniqueJapaneseAcceptationIndex(kanji21 -> kana21, kanji22 -> kana22)
-    bufferSet.newAcceptations(jaAccIndex1).concept shouldBe concept
-    bufferSet.newAcceptations(jaAccIndex2).concept shouldBe concept
+    bufferSet.acceptations(jaAccIndex1).concept shouldBe concept
+    bufferSet.acceptations(jaAccIndex2).concept shouldBe concept
   }
 
   it should "include 2 accRepresentations when only matching its pronunciation (old)" in {
@@ -623,15 +642,15 @@ class MainTest extends FlatSpec with Matchers {
     val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
     val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
 
-    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
-    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
+    val jaWord = bufferSet.acceptations(jaAccIndex1).word
+    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
 
-    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
-    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    val concept1 = bufferSet.acceptations(jaAccIndex1).concept
+    val concept2 = bufferSet.acceptations(jaAccIndex2).concept
     concept1 should not be concept2
 
-    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
-    bufferSet.newAcceptations(esAccIndex2).concept shouldBe concept2
+    bufferSet.acceptations(esAccIndex1).concept shouldBe concept1
+    bufferSet.acceptations(esAccIndex2).concept shouldBe concept2
   }
 
   it should "include 3 accRepresentations when 3 words match its pronunciation (old)" in {
@@ -749,32 +768,32 @@ class MainTest extends FlatSpec with Matchers {
     val esAccIndex2 = findUniqueSpanishAcceptationIndex(esArray2)
     val esAccIndex3 = findUniqueSpanishAcceptationIndex(esArray3)
 
-    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
-    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
+    val jaWord = bufferSet.acceptations(jaAccIndex1).word
+    val concept1 = bufferSet.acceptations(jaAccIndex1).concept
 
-    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
-    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
+    val concept2 = bufferSet.acceptations(jaAccIndex2).concept
     concept1 should not be concept2
 
-    bufferSet.newAcceptations(jaAccIndex3).word shouldBe jaWord
-    val concept3 = bufferSet.newAcceptations(jaAccIndex3).concept
+    bufferSet.acceptations(jaAccIndex3).word shouldBe jaWord
+    val concept3 = bufferSet.acceptations(jaAccIndex3).concept
     concept1 should not be concept3
     concept2 should not be concept3
 
-    val esWord1 = bufferSet.newAcceptations(esAccIndex1).word
+    val esWord1 = bufferSet.acceptations(esAccIndex1).word
     esWord1 should not be jaWord
-    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
+    bufferSet.acceptations(esAccIndex1).concept shouldBe concept1
 
-    val esWord2 = bufferSet.newAcceptations(esAccIndex2).word
+    val esWord2 = bufferSet.acceptations(esAccIndex2).word
     esWord2 should not be jaWord
     esWord2 should not be esWord1
-    bufferSet.newAcceptations(esAccIndex2).concept shouldBe concept2
+    bufferSet.acceptations(esAccIndex2).concept shouldBe concept2
 
-    val esWord3 = bufferSet.newAcceptations(esAccIndex3).word
+    val esWord3 = bufferSet.acceptations(esAccIndex3).word
     esWord3 should not be jaWord
     esWord3 should not be esWord1
     esWord3 should not be esWord2
-    bufferSet.newAcceptations(esAccIndex3).concept shouldBe concept3
+    bufferSet.acceptations(esAccIndex3).concept shouldBe concept3
   }
 
   private def checkSameJapaneseWordWithMoreThan2ConceptsOld(shifter: Iterable[OldWord] => Iterable[OldWord]) = {
@@ -927,9 +946,13 @@ class MainTest extends FlatSpec with Matchers {
 
     val jaAccIndex1 = findUniqueJapaneseAcceptationIndex(kanjiArray1a -> kanaArrayA, kanaArrayB -> kanaArrayB)
     val jaCorrIndex2 = findUniqueJapaneseCorrelationArrayIndexOf(kanjiArray2a -> kanaArrayA, kanaArrayB -> kanaArrayB)
-    val jaAccIndex2a = bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2)
-    val jaAccIndex2b = bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2, jaAccIndex2a + 1)
-    bufferSet.newAcceptations indexWhere(_.correlation == jaCorrIndex2, jaAccIndex2b + 1) should be < 0
+
+    val jaAccIndexes2 = bufferSet.acceptationCorrelations.collect {
+      case (accId, corrArraySet) if corrArraySet.contains(jaCorrIndex2) => accId
+    }.toSet
+    jaAccIndexes2.size shouldBe 2
+    val jaAccIndex2a = jaAccIndexes2.head
+    val jaAccIndex2b = (jaAccIndexes2 - jaAccIndex2a).head
 
     val esAccIndex1 = findUniqueSpanishAcceptationIndex(esArray1)
     val esAccIndex2a1 = findUniqueSpanishAcceptationIndex(esArrays2(0)(0))
@@ -937,25 +960,25 @@ class MainTest extends FlatSpec with Matchers {
     val esAccIndex2b1 = findUniqueSpanishAcceptationIndex(esArrays2(1)(0))
     val esAccIndex2b2 = findUniqueSpanishAcceptationIndex(esArrays2(1)(1))
 
-    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
-    bufferSet.newAcceptations(esAccIndex1).concept shouldBe concept1
+    val concept1 = bufferSet.acceptations(jaAccIndex1).concept
+    bufferSet.acceptations(esAccIndex1).concept shouldBe concept1
 
-    val concept2a = bufferSet.newAcceptations(esAccIndex2a1).concept
-    bufferSet.newAcceptations(esAccIndex2a2).concept shouldBe concept2a
+    val concept2a = bufferSet.acceptations(esAccIndex2a1).concept
+    bufferSet.acceptations(esAccIndex2a2).concept shouldBe concept2a
 
-    val concept2b = bufferSet.newAcceptations(esAccIndex2b1).concept
-    bufferSet.newAcceptations(esAccIndex2b2).concept shouldBe concept2b
+    val concept2b = bufferSet.acceptations(esAccIndex2b1).concept
+    bufferSet.acceptations(esAccIndex2b2).concept shouldBe concept2b
 
     concept1 should not be concept2a
     concept1 should not be concept2b
     concept2a should not be concept2b
 
-    if (bufferSet.newAcceptations(jaAccIndex2a).concept == concept2a) {
-      bufferSet.newAcceptations(jaAccIndex2b).concept shouldBe concept2b
+    if (bufferSet.acceptations(jaAccIndex2a).concept == concept2a) {
+      bufferSet.acceptations(jaAccIndex2b).concept shouldBe concept2b
     }
     else {
-      bufferSet.newAcceptations(jaAccIndex2b).concept shouldBe concept2a
-      bufferSet.newAcceptations(jaAccIndex2a).concept shouldBe concept2b
+      bufferSet.acceptations(jaAccIndex2b).concept shouldBe concept2a
+      bufferSet.acceptations(jaAccIndex2a).concept shouldBe concept2b
     }
   }
 
@@ -1112,23 +1135,23 @@ class MainTest extends FlatSpec with Matchers {
     val esAccIndex2a = findUniqueSpanishAcceptationIndex(esArrays2(0))
     val esAccIndex2b = findUniqueSpanishAcceptationIndex(esArrays2(1))
 
-    val jaWord = bufferSet.newAcceptations(jaAccIndex1).word
-    bufferSet.newAcceptations(jaAccIndex2).word shouldBe jaWord
+    val jaWord = bufferSet.acceptations(jaAccIndex1).word
+    bufferSet.acceptations(jaAccIndex2).word shouldBe jaWord
 
-    val concept1 = bufferSet.newAcceptations(jaAccIndex1).concept
-    val concept2 = bufferSet.newAcceptations(jaAccIndex2).concept
+    val concept1 = bufferSet.acceptations(jaAccIndex1).concept
+    val concept2 = bufferSet.acceptations(jaAccIndex2).concept
     concept1 should not be concept2
 
-    val esAcc1 = bufferSet.newAcceptations(esAccIndex1)
+    val esAcc1 = bufferSet.acceptations(esAccIndex1)
     esAcc1.word should not be jaWord
     esAcc1.concept shouldBe concept1
 
-    val esAcc2a = bufferSet.newAcceptations(esAccIndex2a)
+    val esAcc2a = bufferSet.acceptations(esAccIndex2a)
     esAcc2a.word should not be jaWord
     esAcc2a.word should not be esAcc1.word
     esAcc2a.concept shouldBe concept2
 
-    val esAcc2b = bufferSet.newAcceptations(esAccIndex2b)
+    val esAcc2b = bufferSet.acceptations(esAccIndex2b)
     esAcc2b.word should not be jaWord
     esAcc2b.word should not be esAcc1.word
     esAcc2b.word should not be esAcc2a.word

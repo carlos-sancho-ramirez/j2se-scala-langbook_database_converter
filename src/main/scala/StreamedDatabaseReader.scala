@@ -154,21 +154,23 @@ object StreamedDatabaseReader {
       // Import correlation arrays
       val correlationArraysLength = ibs.readNaturalNumber()
       if (correlationArraysLength > 0) {
-        val correlationArrayTable = new RangedIntegerHuffmanTable(0, correlationArraysLength - 1)
-
         val corrArrayLengthTable = ibs.readHuffmanTable(intDecoder, intDecoder)
-        for (i <- 0 until correlationArraysLength) {
+        for (_ <- 0 until correlationArraysLength) {
           val length = ibs.readHuffmanSymbol(corrArrayLengthTable)
           bufferSet.addCorrelationArrayForIntArray(Array.ofDim[Int](length).map(_ => ibs.readHuffmanSymbol(correlationTable).toInt))
         }
 
         // Import acceptations
         val acceptationsLength = ibs.readNaturalNumber()
-        for (i <- 0 until acceptationsLength) {
-          bufferSet.addAcceptation(NewAcceptation(
+        val corrArraySetLengthTable = ibs.readHuffmanTable(intDecoder, intDecoder)
+        for (_ <- 0 until acceptationsLength) {
+          val accId = bufferSet.addAcceptation(Acceptation(
             ibs.readHuffmanSymbol(wordTable),
-            ibs.readHuffmanSymbol(conceptTable),
-            ibs.readHuffmanSymbol(correlationArrayTable)))
+            ibs.readHuffmanSymbol(conceptTable)))
+
+          val corrArraySet = ibs.readRangedNumberSet(corrArraySetLengthTable, 0, correlationArraysLength - 1)
+          val currentSet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+          bufferSet.acceptationCorrelations(accId) = currentSet ++ corrArraySet
         }
       }
     }
@@ -193,7 +195,8 @@ object StreamedDatabaseReader {
       for (i <- 0 until bunchAcceptationsLength) {
         val bunch = ibs.readHuffmanSymbol(conceptTable)
         val acceptations = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, minAcceptation, maxAcceptation)
-        // Nothing to be added as it is redundant once old bunchAcceptations are read
+        val currentSet = bufferSet.bunchAcceptations.getOrElse(bunch, Set[Int]())
+        bufferSet.bunchAcceptations(bunch) = currentSet ++ acceptations
       }
     }
   }
@@ -242,7 +245,7 @@ object StreamedDatabaseReader {
     }
 
     // Export bunchAcceptations
-    readBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.newAcceptations.size - 1, ibs)
+    readBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.acceptations.size - 1, ibs)
 
     // Export agents
     val agentsLength = ibs.readNaturalNumber()

@@ -5,7 +5,6 @@ import scala.collection.mutable.ArrayBuffer
 
 case class WordRepresentation(word: Int, alphabet: Int, symbolArray: Int)
 case class Acceptation(word: Int, concept: Int)
-case class NewAcceptation(word: Int, concept: Int, correlation: Int)
 
 /** Data for Agents.
   *
@@ -100,19 +99,15 @@ class BufferSet {
   private val _correlationArrayHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
   def correlationArrays: scala.collection.IndexedSeq[Seq[Int]] = _correlationArrays
 
-  private val _newAcceptations = ArrayBuffer[NewAcceptation]()
-  private val _newAcceptationHashes = Array.ofDim[Int](hashTableSize).map(_ => Set[Int]())
-  def newAcceptations: scala.collection.IndexedSeq[NewAcceptation] = _newAcceptations
+  val acceptationCorrelations = scala.collection.mutable.Map[Int /* acc */, Set[Int]]()
 
-  private val _oldNewAcceptationsMap = scala.collection.mutable.Map[Int /* Old Acceptation index */, Int /* New Acceptation index */]()
   val bunchConcepts = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* concepts within the bunch */]()
   val bunchAcceptations = scala.collection.mutable.Map[Int /* Bunch */, Set[Int] /* acceptations indexes within the bunch */]()
-  def bunchNewAcceptations: scala.collection.Map[Int /* Bunch */, Set[Int]] = bunchAcceptations.mapValues(_.map(_oldNewAcceptationsMap))
 
   val agents = scala.collection.mutable.Set[Agent]()
 
   override def hashCode: Int = {
-    _symbolArrays.length + acceptations.length + bunchAcceptations.size + _newAcceptations.length
+    _symbolArrays.length + acceptations.length + bunchAcceptations.size + acceptationCorrelations.size
   }
 
   override def equals(other: Any): Boolean = {
@@ -125,7 +120,7 @@ class BufferSet {
       wordRepresentations == that.wordRepresentations &&
       kanjiKanaCorrelations == that.kanjiKanaCorrelations &&
       jaWordCorrelations == that.jaWordCorrelations &&
-      _newAcceptations == that._newAcceptations &&
+      acceptationCorrelations == that.acceptationCorrelations &&
       _correlations == that._correlations &&
       _correlationArrays == that._correlationArrays &&
       bunchConcepts == that.bunchConcepts &&
@@ -211,18 +206,14 @@ class BufferSet {
     addCorrelationArrayForIntArray(arr)
   }
 
-  def addAcceptation(acc: NewAcceptation) = {
-    val index = insertIfNotPresent(_newAcceptations, _newAcceptationHashes, acc)
-
-    val oldAcc = Acceptation(acc.word, acc.concept)
-    var accIndex = acceptations.indexOf(oldAcc)
+  def addAcceptation(acc: Acceptation) = {
+    var accIndex = acceptations.indexOf(acc)
     if (accIndex < 0) {
       accIndex = acceptations.size
-      acceptations += oldAcc
+      acceptations += acc
     }
 
-    _oldNewAcceptationsMap(accIndex) = index
-    index
+    accIndex
   }
 
   def charCountMap: Map[Char, Int] = {
@@ -241,13 +232,6 @@ class BufferSet {
     val wordMin = StreamedDatabaseConstants.minValidWord - 1
     val conceptMin = StreamedDatabaseConstants.minValidConcept - 1
     val (maxWordFromAcceptations, maxConceptFromAcceptations) = acceptations.foldLeft((wordMin, conceptMin)) {
-      case ((word, concept), acc) =>
-        val maxWord = if (acc.word > word) acc.word else word
-        val maxConcept = if (acc.concept > concept) acc.concept else concept
-        (maxWord, maxConcept)
-    }
-
-    val (maxWordFromNewAcceptations, maxConceptFromNewAcceptations) = _newAcceptations.foldLeft((wordMin, conceptMin)) {
       case ((word, concept), acc) =>
         val maxWord = if (acc.word > word) acc.word else word
         val maxConcept = if (acc.concept > concept) acc.concept else concept
@@ -285,7 +269,6 @@ class BufferSet {
 
     val maxConcept = Set(
       maxConceptFromAcceptations,
-      maxConceptFromNewAcceptations,
       maxConceptFromAlphabets,
       maxConceptFromLanguages,
       maxConceptFromBunchConcepts,
@@ -295,12 +278,7 @@ class BufferSet {
       maxConceptFromAgentSources
     ).max
 
-    val maxAcceptation = Set(
-      maxWordFromAcceptations,
-      maxWordFromNewAcceptations
-    ).max
-
-    (maxAcceptation, maxConcept)
+    (maxWordFromAcceptations, maxConcept)
   }
 
   // Include symbol arrays for language identifiers

@@ -1,7 +1,6 @@
 import org.scalatest.{FlatSpec, Matchers}
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import scala.collection.mutable.ArrayBuffer
 import sword.bitstream.{InputBitStream, OutputBitStream}
 
 class StreamedDatabaseTest extends FlatSpec with Matchers {
@@ -88,127 +87,45 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     checkWriteAndRead(sourceSet)
   }
 
-  it should "match on write and read acceptations and its representations" in {
-    val sourceSet = new BufferSet()
-
-    val wordBase = StreamedDatabaseConstants.minValidWord
-    val conceptBase = StreamedDatabaseConstants.minValidConcept
-
-    val symbolArrays = Vector(
-      "大事", // 0
-      "だいじ",
-      "大切",
-      "たいせつ",
-      "importante",
-      "髪",  // 5
-      "紙",
-      "神",
-      "かみ",
-      "cabello",
-      "papel", // 10
-      "dios"
-    )
-    for (array <- symbolArrays) sourceSet.addSymbolArray(array)
-
-    sourceSet.acceptations ++= Vector(
-      Acceptation(wordBase + 0, conceptBase + 0), //だいじ
-      Acceptation(wordBase + 1, conceptBase + 0), //たいせつ
-      Acceptation(wordBase + 2, conceptBase + 0), //importante
-      Acceptation(wordBase + 3, conceptBase + 1), //かみ(hear)
-      Acceptation(wordBase + 3, conceptBase + 2), //かみ(paper)
-      Acceptation(wordBase + 3, conceptBase + 3), //かみ(God)
-      Acceptation(wordBase + 4, conceptBase + 1), //cabello
-      Acceptation(wordBase + 5, conceptBase + 2), //papel
-      Acceptation(wordBase + 6, conceptBase + 3) //Dios
-    )
-
-    sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(wordBase + 0, Main.kanjiAlphabet, 0),
-      WordRepresentation(wordBase + 0, Main.kanaAlphabet, 1),
-      WordRepresentation(wordBase + 1, Main.kanjiAlphabet, 2),
-      WordRepresentation(wordBase + 1, Main.kanaAlphabet, 3),
-      WordRepresentation(wordBase + 2, Main.esAlphabet, 4),
-      WordRepresentation(wordBase + 3, Main.kanaAlphabet, 8),
-      WordRepresentation(wordBase + 4, Main.esAlphabet, 9),
-      WordRepresentation(wordBase + 5, Main.esAlphabet, 10),
-      WordRepresentation(wordBase + 6, Main.esAlphabet, 11)
-    )
-
-    checkWriteAndRead(sourceSet)
-  }
-
   it should "match on write and read acceptations, its representations and correlations" in {
     val sourceSet = new BufferSet()
 
-    val symbolArrays = Vector(
-      "大事", // 0
-      "だいじ",
-      "大切",
-      "たいせつ",
-      "importante",
-      "髪",  // 5
-      "紙",
-      "神",
-      "かみ",
-      "cabello",
-      "papel", // 10
-      "dios",
-      "大",
-      "事",
-      "だい",
-      "じ", // 15
-      "切",
-      "たい",
-      "せつ"
-    )
-    for (array <- symbolArrays) sourceSet.addSymbolArray(array)
-
     val wordBase = StreamedDatabaseConstants.minValidWord
     val conceptBase = StreamedDatabaseConstants.minValidConcept
 
-    sourceSet.acceptations ++= Vector(
-      Acceptation(wordBase, conceptBase), //だいじ
-      Acceptation(wordBase + 1, conceptBase), //たいせつ
-      Acceptation(wordBase + 2, conceptBase), //importante
-      Acceptation(wordBase + 3, conceptBase + 1), //かみ(hear)
-      Acceptation(wordBase + 3, conceptBase + 2), //かみ(paper)
-      Acceptation(wordBase + 3, conceptBase + 3), //かみ(God)
-      Acceptation(wordBase + 4, conceptBase + 1), //cabello
-      Acceptation(wordBase + 5, conceptBase + 2), //papel
-      Acceptation(wordBase + 6, conceptBase + 3) //Dios
-    )
+    val daijiCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.kanjiAlphabet -> "大事",
+      Main.kanaAlphabet -> "だいじ")))
+    val taisetsuCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.kanjiAlphabet -> "大切",
+      Main.kanaAlphabet -> "たいせつ")))
+    val importanteCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.esAlphabet -> "importante")))
+    val hearCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.kanjiAlphabet -> "髪",
+      Main.kanaAlphabet -> "かみ")))
+    val paperCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.kanjiAlphabet -> "紙",
+      Main.kanaAlphabet -> "かみ")))
+    val godCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.kanjiAlphabet -> "神",
+      Main.kanaAlphabet -> "かみ")))
+    val cabelloCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.esAlphabet -> "cabello")))
+    val papelCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.esAlphabet -> "papel")))
+    val diosCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
+      Main.esAlphabet -> "dios")))
 
-    sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(wordBase + 0, Main.kanjiAlphabet, 0),
-      WordRepresentation(wordBase + 0, Main.kanaAlphabet, 1),
-      WordRepresentation(wordBase + 1, Main.kanjiAlphabet, 2),
-      WordRepresentation(wordBase + 1, Main.kanaAlphabet, 3),
-      WordRepresentation(wordBase + 2, Main.esAlphabet, 4),
-      WordRepresentation(wordBase + 3, Main.kanaAlphabet, 8),
-      WordRepresentation(wordBase + 4, Main.esAlphabet, 9),
-      WordRepresentation(wordBase + 5, Main.esAlphabet, 10),
-      WordRepresentation(wordBase + 6, Main.esAlphabet, 11)
-    )
-
-    sourceSet.kanjiKanaCorrelations ++= Vector(
-      (12, 14),
-      (12, 17),
-      (13, 15),
-      (16, 18),
-      (5, 8),
-      (6, 8),
-      (7, 8)
-    )
-
-    sourceSet.jaWordCorrelations ++= Vector(
-      (wordBase, Set((Set(conceptBase), Vector(0, 2)))),
-      (wordBase + 1, Set((Set(conceptBase), Vector(1, 3)))),
-      (wordBase + 3, Set(
-        (Set(conceptBase + 1), Vector(4)),
-        (Set(conceptBase + 2), Vector(5)),
-        (Set(conceptBase + 3), Vector(6))
-      ))
-    )
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 0, conceptBase + 0))) = Set(daijiCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 1, conceptBase + 0))) = Set(taisetsuCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 2, conceptBase + 0))) = Set(importanteCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 1))) = Set(hearCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 2))) = Set(paperCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 3))) = Set(godCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 4, conceptBase + 1))) = Set(cabelloCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 5, conceptBase + 2))) = Set(papelCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 6, conceptBase + 3))) = Set(diosCorrArrayId)
 
     checkWriteAndRead(sourceSet)
   }
@@ -256,14 +173,6 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val countryWord = lastWord + 4
     val japanWord = lastWord + 5
 
-    sourceSet.wordRepresentations ++= Vector(
-      WordRepresentation(verbWord, Main.enAlphabet, verbSymbolArray),
-      WordRepresentation(runWord, Main.enAlphabet, runSymbolArray),
-      WordRepresentation(jumpWord, Main.enAlphabet, jumpSymbolArray),
-      WordRepresentation(countryWord, Main.enAlphabet, countrySymbolArray),
-      WordRepresentation(japanWord, Main.enAlphabet, japanSymbolArray)
-    )
-
     val accBase = sourceSet.acceptations.size
     sourceSet.acceptations ++= Vector(
       Acceptation(verbWord, verbConcept),
@@ -273,13 +182,13 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       Acceptation(countryWord, countryConcept)
     )
 
-    sourceSet.addAcceptation(NewAcceptation(verbWord, verbConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> verbSymbolArray)))))
-    sourceSet.addAcceptation(NewAcceptation(runWord, runConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> runSymbolArray)))))
-    sourceSet.addAcceptation(NewAcceptation(jumpWord, jumpConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> jumpSymbolArray)))))
-    sourceSet.addAcceptation(NewAcceptation(japanWord, japanConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> japanSymbolArray)))))
-    sourceSet.addAcceptation(NewAcceptation(countryWord, countryConcept, sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> countrySymbolArray)))))
+    sourceSet.acceptationCorrelations(accBase) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> verbSymbolArray))))
+    sourceSet.acceptationCorrelations(accBase + 1) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> runSymbolArray))))
+    sourceSet.acceptationCorrelations(accBase + 2) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> jumpSymbolArray))))
+    sourceSet.acceptationCorrelations(accBase + 3) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> japanSymbolArray))))
+    sourceSet.acceptationCorrelations(accBase + 4) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> countrySymbolArray))))
 
-    sourceSet.bunchAcceptations(verbConcept) = Set(accBase + 1, accBase +2)
+    sourceSet.bunchAcceptations(verbConcept) = Set(accBase + 1, accBase + 2)
     sourceSet.bunchAcceptations(countryConcept) = Set(accBase + 3)
 
     checkWriteAndRead(sourceSet)

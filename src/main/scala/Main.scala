@@ -172,7 +172,9 @@ object Main {
       bufferSet.acceptations += Acceptation(newWord, concept)
 
       val correlationId = bufferSet.addCorrelationArray(Vector(Map(enAlphabet -> symbolArray)))
-      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
+      val accId = bufferSet.addAcceptation(Acceptation(newWord, concept))
+      val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+      bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
       enWords += newWord
@@ -187,7 +189,9 @@ object Main {
       bufferSet.acceptations += Acceptation(newWord, concept)
 
       val correlationId = bufferSet.addCorrelationArray(Vector(Map(esAlphabet -> symbolArray)))
-      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
+      val accId = bufferSet.addAcceptation(Acceptation(newWord, concept))
+      val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+      bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
       esWords += newWord
@@ -224,7 +228,9 @@ object Main {
       val array = correlation.map { case (kanji, kana) =>
           Map(kanjiAlphabet -> kanji, kanaAlphabet -> kana)
       }
-      bufferSet.addAcceptation(NewAcceptation(wordIndex, concept, bufferSet.addCorrelationArray(array)))
+      val accId = bufferSet.addAcceptation(Acceptation(wordIndex, concept))
+      val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+      bufferSet.acceptationCorrelations(accId) = corrArraySet + bufferSet.addCorrelationArray(array)
 
       wordCount += 1
       jaWords += wordIndex
@@ -517,7 +523,9 @@ object Main {
         })
 
         for (concept <- concepts) {
-          bufferSet.addAcceptation(NewAcceptation(wordId, concept, arrayRef))
+          val accId = bufferSet.addAcceptation(Acceptation(wordId, concept))
+          val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+          bufferSet.acceptationCorrelations(accId) = corrArraySet + arrayRef
         }
       }
     }
@@ -534,7 +542,9 @@ object Main {
       for (acc <- bufferSet.acceptations if acc.word == word) {
         val conceptsInJaCorrelations = bufferSet.jaWordCorrelations.get(word).map(_.foldLeft(Set[Int]())((set, r) => set ++ r._1)).getOrElse(Set[Int]())
         if (!conceptsInJaCorrelations(acc.concept)) {
-          bufferSet.addAcceptation(NewAcceptation(word, acc.concept, correlationArray))
+          val accId = bufferSet.addAcceptation(Acceptation(word, acc.concept))
+          val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+          bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationArray
         }
       }
     }
@@ -567,7 +577,9 @@ object Main {
       bufferSet.acceptations += Acceptation(newWord, concept)
 
       val correlationId = bufferSet.addCorrelationArray(Vector(Map(esAlphabet -> symbolArray)))
-      bufferSet.addAcceptation(NewAcceptation(newWord, concept, correlationId))
+      val accId = bufferSet.addAcceptation(Acceptation(newWord, concept))
+      val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+      bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
       esWords += newWord
@@ -695,7 +707,9 @@ object Main {
           conceptCount += 1
           bufferSet.acceptations += Acceptation(ruleWordId, newConcept)
           val corrArray = bufferSet.addCorrelationArrayForIndex(Vector(Map(esAlphabet -> ruleNameSymbolArrayIndex)))
-          bufferSet.addAcceptation(NewAcceptation(ruleWordId, newConcept, corrArray))
+          val accId = bufferSet.addAcceptation(Acceptation(ruleWordId, newConcept))
+          val corrArraySet = bufferSet.acceptationCorrelations.getOrElse(accId, Set[Int]())
+          bufferSet.acceptationCorrelations(accId) = corrArraySet + corrArray
           newConcept
         }
 
