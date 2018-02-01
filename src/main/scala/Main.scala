@@ -778,15 +778,8 @@ object Main {
     val grammarRuleRegisterCsv = "GrammarRuleRegister.csv"
   }
 
-  def main(args: Array[String]): Unit = {
+  private def processDatabase(filePath: String): Unit = {
     implicit val bufferSet = initialiseDatabase()
-    StreamedDatabaseWriter.write(bufferSet, FileNames.basicDatabase)
-
-    val filePath = {
-      val resource = getClass.getClassLoader.getResource(FileNames.resourceDatabase)
-      if (resource == null) sys.error(s"Expected file src/main/resources/${FileNames.resourceDatabase} not present")
-      new File(resource.toURI).getPath
-    }
 
     val sqliteDatabaseReader = new SQLiteDatabaseReader(filePath)
     val oldWordAccMap = convertWords(
@@ -899,6 +892,15 @@ object Main {
     }
     finally {
       outStream4.close()
+    }
+  }
+
+  def main(args: Array[String]): Unit = {
+    StreamedDatabaseWriter.write(initialiseDatabase(), FileNames.basicDatabase)
+
+    val resource = getClass.getClassLoader.getResource(FileNames.resourceDatabase)
+    if (resource != null) {
+      processDatabase(new File(resource.toURI).getPath)
     }
   }
 }
