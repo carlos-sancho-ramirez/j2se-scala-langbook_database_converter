@@ -178,7 +178,8 @@ object StreamedDatabaseReader {
 
   private def readBunchAcceptations(
       bufferSet: BufferSet,
-      conceptTable: RangedIntegerHuffmanTable,
+      minValidConcept: Int,
+      maxValidConcept: Int,
       minAcceptation: Int,
       maxAcceptation: Int,
       ibs: InputBitStream): Unit = {
@@ -192,8 +193,14 @@ object StreamedDatabaseReader {
         else null
       }
 
+      var remainingBunches = bunchAcceptationsLength
+      var minBunchConcept = minValidConcept
       for (i <- 0 until bunchAcceptationsLength) {
-        val bunch = ibs.readHuffmanSymbol(conceptTable)
+        val table = new RangedIntegerHuffmanTable(minBunchConcept, maxValidConcept - remainingBunches + 1)
+        val bunch = ibs.readHuffmanSymbol(table)
+        minBunchConcept = bunch + 1
+        remainingBunches -= 1
+
         val acceptations = ibs.readRangedNumberSet(bunchAcceptationsLengthTable, minAcceptation, maxAcceptation)
         val currentSet = bufferSet.bunchAcceptations.getOrElse(bunch, Set[Int]())
         bufferSet.bunchAcceptations(bunch) = currentSet ++ acceptations
@@ -250,10 +257,10 @@ object StreamedDatabaseReader {
       }
     }
 
-    // Export bunchAcceptations
-    readBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.acceptations.size - 1, ibs)
+    // Import bunchAcceptations
+    readBunchAcceptations(bufferSet, minValidConcept, maxConcept, 0, bufferSet.acceptations.size - 1, ibs)
 
-    // Export agents
+    // Import agents
     val agentsLength = ibs.readNaturalNumber()
     if (agentsLength > 0) {
       val nat3Table = new NaturalNumberHuffmanTable(3)
@@ -295,7 +302,7 @@ object StreamedDatabaseReader {
       }
     }
 
-    // Export ruleConcepts
+    // Import ruleConcepts
     if (ibs.readNaturalNumber() != 0L) {
       throw new AssertionError("Not expected any register within the ruleConcepts table")
     }

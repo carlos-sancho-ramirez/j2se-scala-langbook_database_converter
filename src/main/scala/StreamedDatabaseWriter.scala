@@ -211,7 +211,8 @@ object StreamedDatabaseWriter {
 
   def writeBunchAcceptations(
       bufferSet: BufferSet,
-      conceptTable: RangedIntegerHuffmanTable,
+      minValidConcept: Int,
+      maxValidConcept: Int,
       minAcceptation: Int,
       maxAcceptation: Int,
       obs: OutputBitStream): Unit = {
@@ -227,8 +228,13 @@ object StreamedDatabaseWriter {
     }
     else null
 
-    for ((bunch, accs) <- bunchAcceptations) {
-      obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
+    var remainingBunches = bunchAcceptationsLength
+    var minBunchConcept = minValidConcept
+    for ((bunch, accs) <- bunchAcceptations.toSeq.sortWith(_._1 < _._1)) {
+      val table = new RangedIntegerHuffmanTable(minBunchConcept, maxValidConcept - remainingBunches + 1)
+      obs.writeHuffmanSymbol[Integer](table, bunch)
+      minBunchConcept = bunch + 1
+      remainingBunches -= 1
       obs.writeRangedNumberSet(acceptationSetLengthTable, minAcceptation, maxAcceptation, accs)
     }
   }
@@ -280,7 +286,7 @@ object StreamedDatabaseWriter {
     }
 
     // Export bunchAcceptations
-    writeBunchAcceptations(bufferSet, conceptTable, 0, bufferSet.acceptations.size - 1, obs)
+    writeBunchAcceptations(bufferSet, minValidConcept, maxConcept, 0, bufferSet.acceptations.size - 1, obs)
 
     def listOrder(a: List[Int], b: List[Int]): Boolean = {
       b.nonEmpty && (a.isEmpty || a.nonEmpty && (a.head < b.head || a.head == b.head && listOrder(a.tail, b.tail)))
