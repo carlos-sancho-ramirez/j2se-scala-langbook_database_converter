@@ -234,6 +234,7 @@ object StreamedDatabaseWriter {
   }
 
   def write(bufferSet: BufferSet, obs: OutputBitStream): Unit = {
+
     val symbolArraysLength = bufferSet.symbolArrays.length
     writeSymbolArrays(bufferSet.symbolArrays, obs)
 
@@ -267,8 +268,14 @@ object StreamedDatabaseWriter {
     }
     else null
 
-    for ((bunch, concepts) <- bufferSet.bunchConcepts) {
-      obs.writeHuffmanSymbol[Integer](conceptTable, bunch)
+    var remainingBunches = bunchConceptsLength
+    var minBunchConcept = minValidConcept
+    for ((bunch, concepts) <- bufferSet.bunchConcepts.toSeq.sortWith(_._1 < _._1)) {
+      val table = new RangedIntegerHuffmanTable(minBunchConcept, maxConcept - remainingBunches + 1)
+      obs.writeHuffmanSymbol[Integer](table, bunch)
+      minBunchConcept = bunch + 1
+      remainingBunches -= 1
+
       obs.writeRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept, concepts)
     }
 

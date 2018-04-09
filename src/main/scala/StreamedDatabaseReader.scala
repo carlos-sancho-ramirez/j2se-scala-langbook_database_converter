@@ -223,15 +223,21 @@ object StreamedDatabaseReader {
     // Import acceptations
     readAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, minValidAlphabet, maxValidAlphabet, ibs)
 
-    // Export bunchConcepts
+    // Import bunchConcepts
     val bunchConceptsLength = ibs.readNaturalNumber()
     val bunchConceptsLengthTable: HuffmanTable[Integer] = {
       if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
       else null
     }
 
+    var remainingBunches = bunchConceptsLength
+    var minBunchConcept = minValidConcept
     for (i <- 0 until bunchConceptsLength) {
-      val bunch = ibs.readHuffmanSymbol(conceptTable)
+      val table = new RangedIntegerHuffmanTable(minBunchConcept, maxConcept - remainingBunches + 1)
+      val bunch = ibs.readHuffmanSymbol(table)
+      minBunchConcept = bunch + 1
+      remainingBunches -= 1
+
       val concepts = ibs.readRangedNumberSet(bunchConceptsLengthTable, minValidConcept, maxConcept)
       val previousOpt = bufferSet.bunchConcepts.get(bunch)
       if (previousOpt.nonEmpty) {
