@@ -221,9 +221,9 @@ object StreamedDatabaseWriter {
     obs.writeNaturalNumber(bunchAcceptationsLength)
 
     val acceptationSetLengthTable = if (bunchAcceptationsLength > 0) {
-      val intEncoder = new IntegerEncoder(obs)
-      val table = generateHuffmanTable[(Int,Set[Int]), Integer](bunchAcceptations, _._2.size, intEncoder)
-      obs.writeHuffmanTable(table, intEncoder, intEncoder)
+      val natEncoder = new NaturalEncoder(obs)
+      val table = generateHuffmanTable[(Int,Set[Int]), Integer](bunchAcceptations, _._2.size, natEncoder)
+      obs.writeHuffmanTable(table, natEncoder, natEncoder)
       table
     }
     else null
@@ -267,9 +267,9 @@ object StreamedDatabaseWriter {
     obs.writeNaturalNumber(bunchConceptsLength)
 
     val bunchConceptsLengthTable = if (bunchConceptsLength > 0) {
-      val intEncoder = new IntegerEncoder(obs)
-      val table = generateHuffmanTable[(Int, Set[Int]), Integer](bufferSet.bunchConcepts, _._2.size, intEncoder)
-      obs.writeHuffmanTable[Integer](table, symbol => obs.writeNaturalNumber(symbol), (prev, elem) => obs.writeNaturalNumber(elem - prev - 1))
+      val natEncoder = new NaturalEncoder(obs)
+      val table = generateHuffmanTable[(Int, Set[Int]), Integer](bufferSet.bunchConcepts, _._2.size, natEncoder)
+      obs.writeHuffmanTable[Integer](table, natEncoder, natEncoder)
       table
     }
     else null

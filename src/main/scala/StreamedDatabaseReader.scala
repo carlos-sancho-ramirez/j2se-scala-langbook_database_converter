@@ -1,5 +1,5 @@
 import StreamedDatabaseConstants.{minValidAlphabet, minValidConcept, minValidWord}
-import sword.bitstream.{InputBitStream, IntegerDecoder, RangedIntegerSetDecoder}
+import sword.bitstream.{InputBitStream, IntegerDecoder, NaturalDecoder, RangedIntegerSetDecoder}
 import sword.bitstream.huffman.{HuffmanTable, NaturalNumberHuffmanTable, RangedIntegerHuffmanTable}
 
 import scala.collection.mutable.ListBuffer
@@ -187,8 +187,8 @@ object StreamedDatabaseReader {
     if (bunchAcceptationsLength > 0) {
       val bunchAcceptationsLengthTable: HuffmanTable[Integer] = {
         if (bunchAcceptationsLength > 0) {
-          val intDecoder = new IntegerDecoder(ibs)
-          ibs.readHuffmanTable(intDecoder, intDecoder)
+          val natDecoder = new NaturalDecoder(ibs)
+          ibs.readHuffmanTable(natDecoder, natDecoder)
         }
         else null
       }
@@ -233,7 +233,10 @@ object StreamedDatabaseReader {
     // Import bunchConcepts
     val bunchConceptsLength = ibs.readNaturalNumber()
     val bunchConceptsLengthTable: HuffmanTable[Integer] = {
-      if (bunchConceptsLength > 0) ibs.readHuffmanTable(() => ibs.readNaturalNumber(), prev => ibs.readNaturalNumber() + prev + 1)
+      if (bunchConceptsLength > 0) {
+        val natDecoder = new NaturalDecoder(ibs)
+        ibs.readHuffmanTable(natDecoder, natDecoder)
+      }
       else null
     }
 
