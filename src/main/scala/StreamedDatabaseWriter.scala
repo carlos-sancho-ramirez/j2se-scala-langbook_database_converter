@@ -77,6 +77,8 @@ object StreamedDatabaseWriter {
       obs: OutputBitStream): Unit = {
     val nat2Table = new NaturalNumberHuffmanTable(2)
     val languagesLength = languages.size
+    println(s"Exporting languages ($languagesLength in total)")
+
     obs.writeNaturalNumber(languagesLength)
     var baseAlphabetCounter = StreamedDatabaseConstants.minValidAlphabet
     for (language <- languages) {
@@ -100,7 +102,9 @@ object StreamedDatabaseWriter {
     val sortedConversions = conversions.toList.sortWith((a,b) => a.sourceAlphabet < b.sourceAlphabet ||
       a.sourceAlphabet == b.sourceAlphabet && a.targetAlphabet < b.targetAlphabet)
 
+    println(s"Exporting conversions (${sortedConversions.size} in total)")
     obs.writeNaturalNumber(sortedConversions.size)
+
     var minSourceAlphabet = minValidAlphabet
     var minTargetAlphabet = minValidAlphabet
     for (conv <- sortedConversions) {
@@ -153,6 +157,7 @@ object StreamedDatabaseWriter {
 
     // Export correlations
     val correlationsLength = bufferSet.correlations.length
+    println(s"Exporting correlations ($correlationsLength in total)")
     obs.writeNaturalNumber(correlationsLength)
 
     if (correlationsLength > 0) {
@@ -172,6 +177,7 @@ object StreamedDatabaseWriter {
 
       // Export correlation arrays
       val correlationArraysLength = bufferSet.correlationArrays.length
+      println(s"Exporting correlation arrays ($correlationArraysLength in total)")
       obs.writeNaturalNumber(correlationArraysLength)
 
       if (correlationArraysLength > 0) {
@@ -187,6 +193,7 @@ object StreamedDatabaseWriter {
 
         // Export acceptations
         val acceptationsLength = bufferSet.acceptations.length
+        println(s"Exporting acceptations ($acceptationsLength in total)")
         obs.writeNaturalNumber(acceptationsLength)
 
         if (acceptationsLength > 0) {
@@ -218,6 +225,7 @@ object StreamedDatabaseWriter {
       obs: OutputBitStream): Unit = {
     val bunchAcceptations = bufferSet.bunchAcceptations
     val bunchAcceptationsLength = bunchAcceptations.size
+    println(s"Exporting bunch acceptations ($bunchAcceptationsLength in total)")
     obs.writeNaturalNumber(bunchAcceptationsLength)
 
     val acceptationSetLengthTable = if (bunchAcceptationsLength > 0) {
@@ -264,6 +272,7 @@ object StreamedDatabaseWriter {
 
     // Export bunchConcepts
     val bunchConceptsLength = bufferSet.bunchConcepts.size
+    println(s"Exporting bunch concepts ($bunchConceptsLength in total)")
     obs.writeNaturalNumber(bunchConceptsLength)
 
     val bunchConceptsLengthTable = if (bunchConceptsLength > 0) {
@@ -303,6 +312,7 @@ object StreamedDatabaseWriter {
     }
 
     val agentsLength = sortedAgents.size
+    println(s"Exporting agents ($agentsLength in total)")
     obs.writeNaturalNumber(agentsLength)
     if (agentsLength > 0) {
       val nat3Table = new NaturalNumberHuffmanTable(3)
