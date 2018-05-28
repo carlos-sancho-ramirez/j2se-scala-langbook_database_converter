@@ -148,7 +148,6 @@ object StreamedDatabaseWriter {
 
   private def writeAcceptations(
       bufferSet: BufferSet,
-      wordTable: => RangedIntegerHuffmanTable,
       conceptTable: => RangedIntegerHuffmanTable,
       symbolArrayTable: RangedIntegerHuffmanTable,
       minAlphabet: Int,
@@ -205,7 +204,6 @@ object StreamedDatabaseWriter {
 
           for (i <- bufferSet.acceptations.indices) {
             val acc = bufferSet.acceptations(i)
-            obs.writeHuffmanSymbol[Integer](wordTable, acc.word)
             obs.writeHuffmanSymbol[Integer](conceptTable, acc.concept)
 
             val set = bufferSet.acceptationCorrelations.getOrElse(i, Set[Int]())
@@ -261,14 +259,12 @@ object StreamedDatabaseWriter {
     writeConversions(bufferSet.conversions, maxValidAlphabet, symbolArrayTable, obs)
 
     // Export the amount of words and concepts in order to range integers
-    val (maxWord, maxConcept) = bufferSet.maxWordAndConceptIndexes
-    lazy val wordTable = new RangedIntegerHuffmanTable(minValidWord, maxWord)
+    val (_, maxConcept) = bufferSet.maxWordAndConceptIndexes
     lazy val conceptTable = new RangedIntegerHuffmanTable(minValidConcept, maxConcept)
-    obs.writeNaturalNumber(maxWord + 1)
     obs.writeNaturalNumber(maxConcept + 1)
 
     // Export acceptations
-    writeAcceptations(bufferSet, wordTable, conceptTable, symbolArrayTable, minValidAlphabet, maxValidAlphabet, obs)
+    writeAcceptations(bufferSet, conceptTable, symbolArrayTable, minValidAlphabet, maxValidAlphabet, obs)
 
     // Export bunchConcepts
     val bunchConceptsLength = bufferSet.bunchConcepts.size

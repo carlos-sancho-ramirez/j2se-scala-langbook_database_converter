@@ -90,7 +90,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
   it should "match on write and read acceptations, its representations and correlations" in {
     val sourceSet = new BufferSet()
 
-    val wordBase = StreamedDatabaseConstants.minValidWord
+    val word = StreamedDatabaseConstants.minValidWord
     val conceptBase = StreamedDatabaseConstants.minValidConcept
 
     val daijiCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
@@ -117,15 +117,15 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val diosCorrArrayId = sourceSet.addCorrelationArray(Vector(Map(
       Main.esAlphabet -> "dios")))
 
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 0, conceptBase + 0))) = Set(daijiCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 1, conceptBase + 0))) = Set(taisetsuCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 2, conceptBase + 0))) = Set(importanteCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 1))) = Set(hearCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 2))) = Set(paperCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 3, conceptBase + 3))) = Set(godCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 4, conceptBase + 1))) = Set(cabelloCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 5, conceptBase + 2))) = Set(papelCorrArrayId)
-    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(wordBase + 6, conceptBase + 3))) = Set(diosCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 0))) = Set(daijiCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 0))) = Set(taisetsuCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 0))) = Set(importanteCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 1))) = Set(hearCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 2))) = Set(paperCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 3))) = Set(godCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 1))) = Set(cabelloCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 2))) = Set(papelCorrArrayId)
+    sourceSet.acceptationCorrelations(sourceSet.addAcceptation(Acceptation(word, conceptBase + 3))) = Set(diosCorrArrayId)
 
     checkWriteAndRead(sourceSet)
   }
@@ -159,7 +159,8 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val countrySymbolArray = sourceSet.addSymbolArray("country")
     val japanSymbolArray = sourceSet.addSymbolArray("japan")
 
-    val (lastWord, lastConcept) = sourceSet.maxWordAndConceptIndexes
+    val (_, lastConcept) = sourceSet.maxWordAndConceptIndexes
+    val word = StreamedDatabaseConstants.minValidWord
 
     val verbConcept = lastConcept + 1
     val runConcept = lastConcept + 2
@@ -167,19 +168,13 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
     val countryConcept = lastConcept + 4
     val japanConcept = lastConcept + 5
 
-    val verbWord = lastWord + 1
-    val runWord = lastWord + 2
-    val jumpWord = lastWord + 3
-    val countryWord = lastWord + 4
-    val japanWord = lastWord + 5
-
     val accBase = sourceSet.acceptations.size
     sourceSet.acceptations ++= Vector(
-      Acceptation(verbWord, verbConcept),
-      Acceptation(runWord, runConcept),
-      Acceptation(jumpWord, jumpConcept),
-      Acceptation(japanWord, japanConcept),
-      Acceptation(countryWord, countryConcept)
+      Acceptation(word, verbConcept),
+      Acceptation(word, runConcept),
+      Acceptation(word, jumpConcept),
+      Acceptation(word, japanConcept),
+      Acceptation(word, countryConcept)
     )
 
     sourceSet.acceptationCorrelations(accBase) = Set(sourceSet.addCorrelationArrayForIndex(Vector(Map(Main.enAlphabet -> verbSymbolArray))))
