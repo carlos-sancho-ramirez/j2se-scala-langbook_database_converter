@@ -1499,4 +1499,35 @@ class MainTest extends FlatSpec with Matchers {
 
     bufferSet.agents.contains(expectedAgent) shouldBe true
   }
+
+  it should "recycle concepts" in {
+    val hirouWordId = 1
+    val mitsukeruWordId = 2
+    val mitsukaruWordId = 3
+
+    val oldWords = Vector(
+      OldWord(hirouWordId, "拾う", "ひろう", "coger, encontrar, recolectar"),
+      OldWord(mitsukeruWordId, "見つける", "みつける", "encontrar, hallar"),
+      OldWord(mitsukaruWordId, "見つかる", "みつかる", "encontrar, hallar")
+    )
+
+    val oldWordPronunciations = Map(
+      hirouWordId -> Vector(OldPronunciation("拾", "ひろ"), OldPronunciation("う", "う")),
+      mitsukeruWordId -> Vector(OldPronunciation("見", "み"), OldPronunciation("つける", "つける")),
+      mitsukaruWordId -> Vector(OldPronunciation("見", "み"), OldPronunciation("つかる", "つかる"))
+    )
+
+    implicit val bufferSet = new BufferSet()
+    val wordAcceptationMap: Map[Int, Set[Int]] = Main.convertWords(oldWords, oldWordPronunciations)
+    wordAcceptationMap.size shouldBe 3
+    wordAcceptationMap(hirouWordId).size shouldBe 1
+    val concept1 = bufferSet.acceptations(wordAcceptationMap(hirouWordId).head).concept
+
+    wordAcceptationMap(mitsukeruWordId).size shouldBe 1
+    val concept2 = bufferSet.acceptations(wordAcceptationMap(mitsukeruWordId).head).concept
+    concept1 should not be concept2
+
+    wordAcceptationMap(mitsukaruWordId).size shouldBe 1
+    bufferSet.acceptations(wordAcceptationMap(mitsukaruWordId).head).concept shouldBe concept2
+  }
 }

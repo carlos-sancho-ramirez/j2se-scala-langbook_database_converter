@@ -382,13 +382,15 @@ object Main {
       kanaWordMap(strSet.head) = wordId
     }
 
-    def appendSpanishWord(symbolArray: String): Int = {
+    def appendSpanishWordWithRegisteredSymbolArray(symbolArray: Int): Int = {
       val newIndex = wordCount
-      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, bufferSet.addSymbolArray(symbolArray)))
+      bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, symbolArray))
       wordCount += 1
       esWords += newIndex
       newIndex
     }
+
+    def appendSpanishWord(symbolArray: String): Int = appendSpanishWordWithRegisteredSymbolArray(bufferSet.addSymbolArray(symbolArray))
 
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
@@ -409,13 +411,13 @@ object Main {
           }.getOrElse(-1)
         }
 
-        val conceptIndexes: Array[Int] = wordIndexes.map { index =>
-          bufferSet.acceptations.collectFirst {
+        val conceptIndexes: Array[Set[Int]] = wordIndexes.map { index =>
+          bufferSet.acceptations.collect {
             case acc if acc.word == index => acc.concept
-          }.getOrElse(-1)
+          }.toSet
         }
 
-        conceptIndexes.reduce((a,b) => if (a == b && a >= 0) a else -1)
+        conceptIndexes.reduce((a,b) => a.intersect(b)).headOption.getOrElse(-1)
         // TODO: Here we should check if the already registered one does not include any extra word, which would mean that are not synonyms.
       }
 
@@ -465,10 +467,13 @@ object Main {
       }
       oldWordAccMap(oldWord.wordId) = accArray.toSet
 
-      for (((meanings, knownConcept), accIndex) <- spSymbolArrays zip knownConcepts zip thisAccIndexes) {
+      for (((meanings, knownConcept), accIndex) <- spSymbolArrayIndexes zip knownConcepts zip thisAccIndexes) {
         if (knownConcept < 0) {
           for (meaning <- meanings) {
-            val esWord = appendSpanishWord(meaning)
+            val esWordOpt = bufferSet.wordRepresentations.collectFirst {
+              case repr if repr.symbolArray == meaning => repr.word
+            }
+            val esWord = esWordOpt.getOrElse(appendSpanishWordWithRegisteredSymbolArray(meaning))
             val concept = bufferSet.acceptations(accIndex).concept
             val acc = Acceptation(esWord, concept)
             bufferSet.acceptations += acc
