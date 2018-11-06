@@ -106,6 +106,10 @@ class BufferSet {
 
   val agents = scala.collection.mutable.Set[Agent]()
 
+  val enWords = scala.collection.mutable.BitSet()
+  val esWords = scala.collection.mutable.BitSet()
+  val jaWords = scala.collection.mutable.BitSet()
+
   override def hashCode: Int = {
     _symbolArrays.length + acceptations.length + bunchAcceptations.size + acceptationCorrelations.size
   }

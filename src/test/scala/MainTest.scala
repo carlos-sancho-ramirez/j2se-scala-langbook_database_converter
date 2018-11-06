@@ -1530,4 +1530,28 @@ class MainTest extends FlatSpec with Matchers {
     wordAcceptationMap(mitsukaruWordId).size shouldBe 1
     bufferSet.acceptations(wordAcceptationMap(mitsukaruWordId).head).concept shouldBe concept2
   }
+
+  it should "not mix concepts when at least one Spanish word is common" in {
+    val kippuWordId = 1
+    val iriguchiWordId = 2
+    val oldWords = Vector(
+      OldWord(kippuWordId, "切符", "きっぷ", "billete, ticket, entrada"),
+      OldWord(iriguchiWordId, "入口", "いりぐち", "entrada")
+    )
+
+    val oldWordPronunciations = Map(
+      kippuWordId -> Vector(OldPronunciation("切", "きっ"), OldPronunciation("符", "ぷ")),
+      iriguchiWordId -> Vector(OldPronunciation("入", "いり"), OldPronunciation("口", "ぐち"))
+    )
+
+    implicit val bufferSet = new BufferSet()
+    val wordAcceptationMap: Map[Int, Set[Int]] = Main.convertWords(oldWords, oldWordPronunciations)
+    wordAcceptationMap.size shouldBe 2
+    wordAcceptationMap(kippuWordId).size shouldBe 1
+    wordAcceptationMap(iriguchiWordId).size shouldBe 1
+
+    val kippuConcept = bufferSet.acceptations(wordAcceptationMap(kippuWordId).head).concept
+    val iriguchiConcept = bufferSet.acceptations(wordAcceptationMap(iriguchiWordId).head).concept
+    kippuConcept should not be iriguchiConcept
+  }
 }

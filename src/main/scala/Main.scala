@@ -38,11 +38,6 @@ object Main {
   val dbWordBase = StreamedDatabaseConstants.minValidWord
   val dbConceptBase = maxValidLanguage + 1
 
-  // TODO: This should not be static
-  val enWords = scala.collection.mutable.BitSet()
-  val esWords = scala.collection.mutable.BitSet()
-  val jaWords = scala.collection.mutable.BitSet()
-
   val hiragana2RoumajiConversionPairs = List(
     "あ" -> "a",
     "い" -> "i",
@@ -305,7 +300,7 @@ object Main {
       bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
-      enWords += newWord
+      bufferSet.enWords += newWord
     }
 
     /**
@@ -322,7 +317,7 @@ object Main {
       bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
-      esWords += newWord
+      bufferSet.esWords += newWord
     }
 
     def appendJapaneseAcceptation(concept: Int, correlation: Vector[(String, String)]): Unit = {
@@ -361,7 +356,7 @@ object Main {
       bufferSet.acceptationCorrelations(accId) = corrArraySet + bufferSet.addCorrelationArray(array)
 
       wordCount += 1
-      jaWords += wordIndex
+      bufferSet.jaWords += wordIndex
     }
 
     def registerWordWithConcept(concept: Int, en: String, es: String, correlation: Vector[(String, String)]): Unit = {
@@ -421,12 +416,12 @@ object Main {
     * An illegal argument exception is thrown if the word provided
     * is not registered.
     */
-  def languageIndex(word: Int): Int = {
+  def languageIndex(word: Int)(implicit bufferSet: BufferSet): Int = {
     val result = languages.indexWhere { lang =>
       lang.code match {
-        case "en" => enWords(word)
-        case "es" => esWords(word)
-        case "ja" => jaWords(word)
+        case "en" => bufferSet.enWords(word)
+        case "es" => bufferSet.esWords(word)
+        case "ja" => bufferSet.jaWords(word)
       }
     }
 
@@ -514,11 +509,9 @@ object Main {
       val newIndex = wordCount
       bufferSet.wordRepresentations.append(WordRepresentation(newIndex, esAlphabet, symbolArray))
       wordCount += 1
-      esWords += newIndex
+      bufferSet.esWords += newIndex
       newIndex
     }
-
-    def appendSpanishWord(symbolArray: String): Int = appendSpanishWordWithRegisteredSymbolArray(bufferSet.addSymbolArray(symbolArray))
 
     for (oldWord <- oldWords) {
       // Retrieve strings from old word
@@ -545,8 +538,14 @@ object Main {
           }.toSet
         }
 
-        conceptIndexes.reduce((a,b) => a.intersect(b)).headOption.getOrElse(-1)
-        // TODO: Here we should check if the already registered one does not include any extra word, which would mean that are not synonyms.
+        val commonConcepts = conceptIndexes.reduce((a,b) => a.intersect(b))
+        val wordIndexesSet = wordIndexes.toSet
+
+        commonConcepts.collectFirst {
+          case concept if bufferSet.acceptations.collect {
+            case acc if acc.concept == concept && bufferSet.esWords(acc.word) => acc.word
+          }.toSet == wordIndexesSet => concept
+        }.getOrElse(-1)
       }
 
       // If another word with the same kana is found we reuse it as they are considered to be the
@@ -554,7 +553,7 @@ object Main {
       val jaWord = knownJaWord.getOrElse {
         val jaWord = wordCount
         wordCount += 1
-        jaWords += jaWord
+        bufferSet.jaWords += jaWord
 
         kanaWordMap(kanaSymbolArray) = jaWord
         jaWord
@@ -715,7 +714,7 @@ object Main {
       bufferSet.acceptationCorrelations(accId) = corrArraySet + correlationId
 
       wordCount += 1
-      esWords += newWord
+      bufferSet.esWords += newWord
     }
 
     for ((listId, name) <- oldLists) {
@@ -831,7 +830,7 @@ object Main {
           val newWordId = wordCount
           wordCount += 1
           bufferSet.wordRepresentations += WordRepresentation(newWordId, esAlphabet, ruleNameSymbolArrayIndex)
-          esWords += newWordId
+          bufferSet.esWords += newWordId
           newWordId
         }
 
@@ -871,7 +870,7 @@ object Main {
     for (repr <- bufferSet.wordRepresentations) {
       if (repr != InvalidRegister.wordRepresentation) {
         val concepts = bufferSet.acceptations.collect { case p if p.word == repr.word => p.concept }
-        val lang = languages(languageIndex(repr.word)).code
+        val lang = languages(languageIndex(repr.word)(bufferSet)).code
         val str = bufferSet.symbolArrays(repr.symbolArray)
         array += WordEntry(concepts.toSet, repr.word, lang, repr.alphabet, str)
       }
