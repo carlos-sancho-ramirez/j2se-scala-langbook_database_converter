@@ -743,8 +743,24 @@ object Main {
         case acc if acc.word == word => acc.concept
       })
 
+      val uniqueWordConcepts: Array[Int] = {
+        if (concepts.length > 1) {
+          concepts.filter { concept =>
+            bufferSet.acceptations.count {
+              acc => acc.concept == concept && bufferSet.wordRepresentations.exists {
+                repr => repr.word == acc.word && repr.alphabet == esAlphabet
+              }
+            } == 1
+          }
+        }
+        else Array()
+      }
+
       if (concepts.length == 1) {
         lists += ((concepts.head, listId, false, name))
+      }
+      else if (uniqueWordConcepts.length == 1) {
+        lists += ((uniqueWordConcepts.head, listId, false, name))
       }
       else {
         val concept = conceptCount
