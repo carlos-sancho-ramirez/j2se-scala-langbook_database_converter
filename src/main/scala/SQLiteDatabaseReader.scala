@@ -35,7 +35,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM WordRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val wordId = resultSet.getInt("id")
           val kanjiSymbolArray = resultSet.getString("mWrittenWord")
@@ -77,7 +77,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM ListRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val id = resultSet.getInt("id")
           val name = resultSet.getString("name")
@@ -111,7 +111,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM ListChildRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val listId = resultSet.getInt("listId")
           val childId = resultSet.getInt("childId")
@@ -146,7 +146,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM PronunciationRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val id = resultSet.getInt("id")
           val kanji = resultSet.getString("written")
@@ -182,7 +182,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM WordPronunciationRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val id = resultSet.getInt("id")
           val wordId = resultSet.getInt("wordId")
@@ -242,7 +242,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM GrammarConstraintRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val id = resultSet.getInt("id")
           val pattern = resultSet.getString("pattern")
@@ -276,7 +276,7 @@ class SQLiteDatabaseReader(val filePath: String) {
         val statement = connection.createStatement()
         statement.setQueryTimeout(10) // 10 seconds
         val resultSet = statement.executeQuery("SELECT * FROM GrammarRuleRegister")
-        var limit = 10000
+        var limit = 100000
         while (limit > 0 && resultSet.next()) {
           val id = resultSet.getInt("id")
           val form = resultSet.getString("form")
