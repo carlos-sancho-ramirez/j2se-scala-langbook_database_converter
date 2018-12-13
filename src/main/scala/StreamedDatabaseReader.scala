@@ -265,8 +265,8 @@ object StreamedDatabaseReader {
       val nat3Table = new NaturalNumberHuffmanTable(3)
       val sourceSetLengthTable = ibs.readHuffmanTable[Integer](() => ibs.readHuffmanSymbol(nat3Table).toInt, null)
 
-      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.size - 1)
       val nullCorrelation = bufferSet.addCorrelation(Map())
+      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.size - 1)
 
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
@@ -283,17 +283,20 @@ object StreamedDatabaseReader {
           minSource = sourceSet.min
         }
 
-        val matcher = ibs.readHuffmanSymbol(correlationTable)
-        val adder = ibs.readHuffmanSymbol(correlationTable)
+        val startMatcher = ibs.readHuffmanSymbol(correlationTable)
+        val startAdder = ibs.readHuffmanSymbol(correlationTable)
+        val endMatcher = ibs.readHuffmanSymbol(correlationTable)
+        val endAdder = ibs.readHuffmanSymbol(correlationTable)
 
+        val hasRule = startMatcher != startAdder || endMatcher != endAdder
+        val fromStart = startMatcher != nullCorrelation || startAdder != nullCorrelation
+
+        val matcher = if (fromStart) startMatcher else endMatcher
+        val adder = if (fromStart) startAdder else endAdder
         val rule = {
-          if (adder != nullCorrelation) {
-            ibs.readHuffmanSymbol(conceptTable).toInt
-          }
+          if (hasRule) ibs.readHuffmanSymbol(conceptTable).toInt
           else StreamedDatabaseConstants.nullBunchId
         }
-
-        val fromStart = (matcher != nullCorrelation || adder != nullCorrelation) && ibs.readBoolean()
 
         bufferSet.agents += Agent(targetBunch, sourceSet, matcher, adder, rule, fromStart)
 

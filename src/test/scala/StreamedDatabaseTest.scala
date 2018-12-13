@@ -206,7 +206,7 @@ class StreamedDatabaseTest extends FlatSpec with Matchers {
       targetBunch,
       sourceBunches = Set(),
       matcher,
-      adder = bufferSet.addCorrelation(Map()),
+      adder = matcher,
       rule = StreamedDatabaseConstants.nullBunchId,
       fromStart = false
     )

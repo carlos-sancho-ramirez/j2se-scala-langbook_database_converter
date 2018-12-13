@@ -316,8 +316,8 @@ object StreamedDatabaseWriter {
       val sourceSetLengthTable = generateHuffmanTable[Agent, Integer](sortedAgents, _.sourceBunches.size, intEncoder)
       obs.writeHuffmanTable[Integer](sourceSetLengthTable, l => obs.writeHuffmanSymbol(nat3Table, l), null)
 
-      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.length - 1)
       val nullCorrelation = bufferSet.addCorrelation(Map())
+      val correlationTable = new RangedIntegerHuffmanTable(0, bufferSet.correlations.length - 1)
 
       var lastTarget = StreamedDatabaseConstants.nullBunchId
       var minSource = StreamedDatabaseConstants.minValidConcept
@@ -337,15 +337,24 @@ object StreamedDatabaseWriter {
           else sourceBunches.min
         }
 
-        obs.writeHuffmanSymbol[Integer](correlationTable, agent.matcher)
-        obs.writeHuffmanSymbol[Integer](correlationTable, agent.adder)
-
-        if (agent.adder != nullCorrelation) {
-          obs.writeHuffmanSymbol[Integer](conceptTable, agent.rule)
+        val correlations = {
+          if (agent.matcher == nullCorrelation && agent.adder == nullCorrelation) {
+            Vector(nullCorrelation, nullCorrelation, nullCorrelation, nullCorrelation)
+          }
+          else if (agent.fromStart) {
+            Vector(agent.matcher, agent.adder, nullCorrelation, nullCorrelation)
+          }
+          else {
+            Vector(nullCorrelation, nullCorrelation, agent.matcher, agent.adder)
+          }
         }
 
-        if (agent.matcher != nullCorrelation || agent.adder != nullCorrelation) {
-          obs.writeBoolean(agent.fromStart)
+        for (correlation <- correlations) {
+          obs.writeHuffmanSymbol[Integer](correlationTable, correlation)
+        }
+
+        if (agent.matcher != agent.adder) {
+          obs.writeHuffmanSymbol[Integer](conceptTable, agent.rule)
         }
 
         lastTarget = newTarget
