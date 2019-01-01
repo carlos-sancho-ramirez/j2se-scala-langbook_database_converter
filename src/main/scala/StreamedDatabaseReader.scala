@@ -304,9 +304,14 @@ object StreamedDatabaseReader {
       }
     }
 
-    // Import ruleConcepts
-    if (ibs.readNaturalNumber() != 0L) {
-      throw new AssertionError("Not expected any register within the ruleConcepts table")
+    // Import relevant dynamic acceptations - None to be added here
+    if (ibs.readNaturalNumber() != 0) {
+      throw new UnsupportedOperationException()
+    }
+
+    // Import sentence spans - None to be added here
+    if (ibs.readNaturalNumber() != 0) {
+      throw new UnsupportedOperationException()
     }
 
     ibs.close()
