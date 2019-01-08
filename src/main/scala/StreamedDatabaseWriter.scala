@@ -367,6 +367,9 @@ object StreamedDatabaseWriter {
     // Export sentence spans - None to be added here
     obs.writeNaturalNumber(0)
 
+    // Export sentence meanings - None to be added here
+    obs.writeNaturalNumber(0)
+
     obs.close()
   }
 

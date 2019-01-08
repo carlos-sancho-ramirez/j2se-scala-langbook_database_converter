@@ -314,6 +314,11 @@ object StreamedDatabaseReader {
       throw new UnsupportedOperationException()
     }
 
+    // Import sentence meanings - None to be added here
+    if (ibs.readNaturalNumber() != 0) {
+      throw new UnsupportedOperationException()
+    }
+
     ibs.close()
   }
 }
